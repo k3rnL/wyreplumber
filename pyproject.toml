@@ -28,9 +28,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/k3rnL/pypewire"
-Repository = "https://github.com/k3rnL/pypewire"
-Issues = "https://github.com/k3rnL/pypewire/issues"
+Homepage = "https://github.com/k3rnL/wyreplumber"
+Repository = "https://github.com/k3rnL/wyreplumber"
+Issues = "https://github.com/k3rnL/wyreplumber/issues"
 
 [tool.uv]
 cache-keys = [{ file = "pyproject.toml" }, { file = "setup.py" }, { file = "setup.cfg" }, { file = "**.c" }, { file = "**.h" }]
