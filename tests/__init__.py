@@ -1,1 +1,1 @@
-# Tests for pypewire
+# Tests for wyreplumber
