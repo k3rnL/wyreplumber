@@ -1,0 +1,339 @@
+from typing import List, Dict, Optional, Tuple, Any, final
+
+# Node state constants
+WP_NODE_STATE_ERROR: int
+WP_NODE_STATE_CREATING: int
+WP_NODE_STATE_SUSPENDED: int
+WP_NODE_STATE_IDLE: int
+WP_NODE_STATE_RUNNING: int
+
+# Port direction constants
+WP_DIRECTION_INPUT: int
+WP_DIRECTION_OUTPUT: int
+
+
+@final
+class WPMetadata:
+    """
+    Represents a WirePlumber metadata object.
+
+    This object wraps a WpMetadata and provides access to metadata
+    properties and manipulation methods.
+    """
+
+    @property
+    def id(self) -> int:
+        """The global ID of the metadata object."""
+        ...
+
+    @property
+    def properties(self) -> Dict[str, str]:
+        """All metadata properties as a dictionary."""
+        ...
+
+    def find(self, subject: int, key: str) -> Optional[Tuple[str, str]]:
+        """
+        Find metadata value by subject and key.
+
+        Args:
+            subject: The subject ID to search for
+            key: The metadata key
+
+        Returns:
+            A tuple of (value, type) if found, None otherwise.
+        """
+        ...
+
+    def set(self, subject: int, key: str, type: Optional[str] = None, value: Optional[str] = None) -> None:
+        """
+        Set metadata for a subject and key.
+
+        Args:
+            subject: The subject ID
+            key: The metadata key
+            type: Optional type string
+            value: Optional value string. Pass None to unset the metadata.
+
+        Note:
+            Changes are cached locally and exported to PipeWire when activated
+            with WP_PROXY_FEATURE_BOUND.
+        """
+        ...
+
+    def clear(self) -> None:
+        """
+        Remove all stored metadata.
+
+        This clears all metadata entries from this metadata object.
+        """
+        ...
+
+    def iterate(self, subject: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Iterate over metadata items.
+
+        Args:
+            subject: Optional subject ID to filter by. If None, iterates all items.
+
+        Returns:
+            A list of dictionaries, each containing:
+            - subject (int): The subject ID
+            - key (str): The metadata key
+            - type (str): The metadata type
+            - value (str): The metadata value
+        """
+        ...
+
+
+@final
+class WPPort:
+    """
+    Represents a WirePlumber port.
+
+    This object wraps a WpPort and provides access to its properties
+    and direction information.
+    """
+
+    @property
+    def id(self) -> int:
+        """The global ID of the port."""
+        ...
+
+    @property
+    def properties(self) -> Dict[str, str]:
+        """
+        All port properties as a dictionary.
+
+        Includes properties like:
+        - port.name: The port name
+        - port.alias: Port alias
+        - node.id: ID of the node this port belongs to
+        - audio.channel: Audio channel designation
+        And many others depending on the port type.
+        """
+        ...
+
+    @property
+    def direction(self) -> int:
+        """
+        The direction of the port.
+
+        Returns one of:
+        - WP_DIRECTION_INPUT (0): Port is an input (sink)
+        - WP_DIRECTION_OUTPUT (1): Port is an output (source)
+        """
+        ...
+
+
+@final
+class WPModule:
+    """
+    Represents a WirePlumber module.
+
+    This object wraps a WpImplModule and provides access to its properties.
+    """
+
+    @property
+    def name(self) -> Optional[str]:
+        """Module name."""
+        ...
+
+    @property
+    def arguments(self) -> Optional[str]:
+        """Module arguments passed during loading."""
+        ...
+
+    @property
+    def properties(self) -> Dict[str, str]:
+        """All module properties as a dictionary."""
+        ...
+
+    def unload(self) -> None:
+        """
+        Unload this module.
+
+        Raises:
+            RuntimeError: If the module is already unloaded or invalid.
+        """
+        ...
+
+
+@final
+class WPNode:
+    """
+    Represents a WirePlumber node.
+
+    This object wraps a WpNode and provides access to all its properties,
+    state information, and port counts.
+    """
+
+    @property
+    def id(self) -> int:
+        """The global ID of the node."""
+        ...
+
+    @property
+    def properties(self) -> Dict[str, str]:
+        """
+        All node properties as a dictionary.
+
+        Includes properties like:
+        - node.name: The node name
+        - node.nick: The node nickname
+        - node.description: Node description
+        - media.class: Media class (e.g., 'Audio/Source', 'Audio/Sink')
+        - application.name: Application name
+        And many others depending on the node type.
+        """
+        ...
+
+    @property
+    def state(self) -> int:
+        """
+        The current state of the node.
+
+        Returns one of:
+        - WP_NODE_STATE_ERROR (-1)
+        - WP_NODE_STATE_CREATING (0)
+        - WP_NODE_STATE_SUSPENDED (1)
+        - WP_NODE_STATE_IDLE (2)
+        - WP_NODE_STATE_RUNNING (3)
+        """
+        ...
+
+    @property
+    def n_input_ports(self) -> int:
+        """Current number of input ports."""
+        ...
+
+    @property
+    def max_input_ports(self) -> int:
+        """Maximum number of input ports supported."""
+        ...
+
+    @property
+    def n_output_ports(self) -> int:
+        """Current number of output ports."""
+        ...
+
+    @property
+    def max_output_ports(self) -> int:
+        """Maximum number of output ports supported."""
+        ...
+
+    @property
+    def error_message(self) -> Optional[str]:
+        """Error message if state is WP_NODE_STATE_ERROR, None otherwise."""
+        ...
+
+    def delete(self) -> None:
+        """
+        Delete this node from the PipeWire server.
+
+        Raises:
+            RuntimeError: If the node is already deleted or invalid.
+        """
+        ...
+
+    def get_ports(self, direction: Optional[int] = None) -> List[WPPort]:
+        """
+        Get the ports of this node.
+
+        Args:
+            direction: Optional direction filter. If specified, only returns ports
+                      matching the direction (WP_DIRECTION_INPUT or WP_DIRECTION_OUTPUT).
+                      If None, returns all ports.
+
+        Returns:
+            A list of WPPort objects representing the node's ports.
+
+        Raises:
+            RuntimeError: If the object manager is not available.
+            TypeError: If direction is not an integer.
+            ValueError: If direction is not WP_DIRECTION_INPUT or WP_DIRECTION_OUTPUT.
+        """
+        ...
+
+
+@final
+class WPConnection:
+    """
+    WirePlumber connection that manages communication with PipeWire via WirePlumber.
+
+    Creates a dedicated thread for the WirePlumber event loop on initialization.
+    All WirePlumber operations are dispatched to this thread while Python methods
+    block until completion.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialize the WirePlumber connection.
+
+        Creates a background thread where the WirePlumber GMainLoop runs.
+        Blocks until the connection is established and the object manager is ready.
+
+        Raises:
+            RuntimeError: If the connection fails or thread creation fails.
+        """
+        ...
+
+    def get_nodes(self) -> List[WPNode]:
+        """
+        Fetch the list of nodes from WirePlumber's object manager.
+
+        This method is thread-safe and blocks from Python's perspective while
+        releasing the GIL. The actual work is performed on the WirePlumber thread.
+
+        Returns:
+            A list of WPNode objects representing all nodes in the PipeWire graph.
+
+        Raises:
+            RuntimeError: If the node retrieval fails.
+        """
+        ...
+
+    def get_modules(self) -> List[WPModule]:
+        """
+        Fetch the list of loaded modules from WirePlumber's object manager.
+
+        This method is thread-safe and blocks from Python's perspective while
+        releasing the GIL. The actual work is performed on the WirePlumber thread.
+
+        Returns:
+            A list of WPModule objects representing all loaded modules.
+
+        Raises:
+            RuntimeError: If the module retrieval fails.
+        """
+        ...
+
+    def get_metadata(self) -> List[WPMetadata]:
+        """
+        Fetch the list of metadata objects from WirePlumber's object manager.
+
+        This method is thread-safe and blocks from Python's perspective while
+        releasing the GIL. The actual work is performed on the WirePlumber thread.
+
+        Returns:
+            A list of WPMetadata objects representing all metadata in the PipeWire graph.
+
+        Raises:
+            RuntimeError: If the metadata retrieval fails.
+        """
+        ...
+
+    def load_module(self, name: str, arguments: Optional[str] = None) -> WPModule:
+        """
+        Load a WirePlumber module.
+
+        Args:
+            name: The name of the module to load (e.g., 'libpipewire-module-loopback')
+            arguments: Optional arguments to pass to the module
+
+        Returns:
+            A WPModule object representing the loaded module.
+
+        Raises:
+            RuntimeError: If the module fails to load.
+        """
+        ...

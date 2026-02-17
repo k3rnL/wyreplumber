@@ -1,0 +1,2 @@
+recursive-include native *.h
+recursive-include native *.c

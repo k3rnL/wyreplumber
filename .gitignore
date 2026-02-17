@@ -1,0 +1,53 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# C extensions
+*.o
+*.lo
+*.la
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# JetBrains IDEs
+.idea/
+
+# uv package manager
+.uv/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Temporary test directories
+/tmp/
