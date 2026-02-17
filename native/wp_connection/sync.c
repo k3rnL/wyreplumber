@@ -88,3 +88,8 @@ gboolean wp_connection_sync(WPConnection *conn) {
 
     return success;
 }
+
+
+PyObject *WPConnection_sync(WPConnection *self, PyObject *Py_UNUSED(ignored)) {
+    return PyBool_FromLong(wp_connection_sync(self));
+}

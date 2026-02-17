@@ -277,6 +277,11 @@ class WPConnection:
         """
         ...
 
+    def sync(self) -> None:
+        """
+        Wait for the WirePlumber event loop to finish processing all pending events.
+        """
+
     def get_nodes(self) -> List[WPNode]:
         """
         Fetch the list of nodes from WirePlumber's object manager.

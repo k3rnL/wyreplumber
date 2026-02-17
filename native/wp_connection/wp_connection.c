@@ -190,6 +190,7 @@ static PyMemberDef Custom_members[] = {
 };
 
 static PyMethodDef WPConnection_methods[] = {
+    {"sync", (PyCFunction)WPConnection_sync, METH_NOARGS, "Blocking sync to pump/sync all events"},
     {"get_nodes", (PyCFunction)WPConnection_get_nodes, METH_NOARGS, "List nodes"},
     {"get_modules", (PyCFunction)WPConnection_get_modules, METH_NOARGS, "List modules"},
     {"get_metadata", (PyCFunction)WPConnection_get_metadata, METH_NOARGS, "List metadata"},

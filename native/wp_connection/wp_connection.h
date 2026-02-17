@@ -36,6 +36,7 @@ typedef struct {
 extern PyTypeObject WPConnectionType;
 
 // Method declarations
+PyObject *WPConnection_sync(WPConnection *self, PyObject *Py_UNUSED(ignored));
 PyObject *WPConnection_get_nodes(WPConnection *self, PyObject *Py_UNUSED(ignored));
 PyObject *WPConnection_get_modules(WPConnection *self, PyObject *Py_UNUSED(ignored));
 PyObject *WPConnection_get_metadata(WPConnection *self, PyObject *Py_UNUSED(ignored));
