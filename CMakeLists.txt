@@ -9,23 +9,23 @@ pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
 pkg_check_modules(WIREPLUMBER REQUIRED wireplumber-0.4)
 
 add_library(wyreplumber_core MODULE
-        native/wyreplumber/wyreplumber.c
-        native/wyreplumber/wp_connection/wp_connection.c
-        native/wyreplumber/wp_connection/wp_connection.h
-        native/wyreplumber/wp_connection/get_nodes.c
-        native/wyreplumber/wp_connection/get_modules.c
-        native/wyreplumber/wp_connection/get_metadata.c
-        native/wyreplumber/wp_connection/load_module.c
-        native/wyreplumber/wp_connection/sync.c
-        native/wyreplumber/wp_node/wp_node.c
-        native/wyreplumber/wp_module/wp_module.h
-        native/wyreplumber/wp_module/wp_module.c
-        native/wyreplumber/wp_port/wp_port.c
-        native/wyreplumber/wp_metadata/wp_metadata.c
-        native/wyreplumber/wp_metadata/metadata_find.c
-        native/wyreplumber/wp_metadata/metadata_set.c
-        native/wyreplumber/wp_metadata/metadata_clear.c
-        native/wyreplumber/wp_metadata/metadata_iterate.c)
+        native/wyreplumber.c
+        native/wp_connection/wp_connection.c
+        native/wp_connection/wp_connection.h
+        native/wp_connection/get_nodes.c
+        native/wp_connection/get_modules.c
+        native/wp_connection/get_metadata.c
+        native/wp_connection/load_module.c
+        native/wp_connection/sync.c
+        native/wp_node/wp_node.c
+        native/wp_module/wp_module.h
+        native/wp_module/wp_module.c
+        native/wp_port/wp_port.c
+        native/wp_metadata/wp_metadata.c
+        native/wp_metadata/metadata_find.c
+        native/wp_metadata/metadata_set.c
+        native/wp_metadata/metadata_clear.c
+        native/wp_metadata/metadata_iterate.c)
 
 
 target_include_directories(wyreplumber_core PRIVATE
