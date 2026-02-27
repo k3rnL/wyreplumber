@@ -92,6 +92,11 @@ static PyObject *WPNode_delete(WPNode *self, PyObject *Py_UNUSED(ignored)) {
     // Request destruction of the node
     wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(self->node));
 
+    // Mark as deleted by unreffing and NULLing the node
+    // This prevents double-delete
+    g_object_unref(self->node);
+    self->node = NULL;
+
     Py_RETURN_NONE;
 }
 

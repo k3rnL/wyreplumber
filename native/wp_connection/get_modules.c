@@ -40,7 +40,7 @@ static gboolean do_get_modules_on_wp_thread(gpointer user_data) {
         // WpImplModule is a GObject, not a WpObject, so no features to check
 
         // Create WPModule Python object
-        PyObject *py_module = WPModule_from_wp_module(module, conn->core);
+        PyObject *py_module = WPModule_from_wp_module(module, conn->core, conn);
         if (!py_module) {
             g_value_unset(&val);
             Py_DECREF(list);

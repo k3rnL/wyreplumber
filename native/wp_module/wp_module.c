@@ -3,6 +3,7 @@
 //
 
 #include "wp_module.h"
+#include "../wp_connection/wp_connection.h"
 
 // Forward declarations
 static void WPModule_dealloc(WPModule *self);
@@ -21,6 +22,9 @@ static void WPModule_dealloc(WPModule *self) {
         g_object_unref(self->core);
         self->core = NULL;
     }
+    // Don't unref conn - we don't own it, it's just a weak reference
+    self->conn = NULL;
+
     Py_XDECREF(self->properties);
     if (self->name) {
         free(self->name);
@@ -57,19 +61,6 @@ static PyObject *WPModule_get_properties(WPModule *self, void *closure) {
     return self->properties;
 }
 
-static PyObject *WPModule_unload(WPModule *self, PyObject *Py_UNUSED(ignored)) {
-    if (!self->module) {
-        PyErr_SetString(PyExc_RuntimeError, "Module already unloaded or invalid");
-        return NULL;
-    }
-
-    // Unload the module by unreffing it (WirePlumber handles the rest)
-    g_object_unref(self->module);
-    self->module = NULL;
-
-    Py_RETURN_NONE;
-}
-
 static PyGetSetDef WPModule_getsetters[] = {
     {"name", (getter)WPModule_get_name, NULL, "Module name", NULL},
     {"arguments", (getter)WPModule_get_arguments, NULL, "Module arguments", NULL},
@@ -78,7 +69,6 @@ static PyGetSetDef WPModule_getsetters[] = {
 };
 
 static PyMethodDef WPModule_methods[] = {
-    {"unload", (PyCFunction)WPModule_unload, METH_NOARGS, "Unload this module"},
     {NULL}
 };
 
@@ -123,13 +113,14 @@ static PyObject *iterate_wp_properties(WpProperties *props) {
     return dict;
 }
 
-PyObject *WPModule_from_wp_module(WpImplModule *wp_module, WpCore *core) {
+PyObject *WPModule_from_wp_module(WpImplModule *wp_module, WpCore *core, WPConnection *conn) {
     WPModule *self = (WPModule *)WPModuleType.tp_alloc(&WPModuleType, 0);
     if (!self) return NULL;
 
     // Initialize all pointers to NULL first
     self->module = NULL;
     self->core = NULL;
+    self->conn = NULL;
     self->properties = NULL;
     self->name = NULL;
     self->arguments = NULL;
@@ -137,6 +128,7 @@ PyObject *WPModule_from_wp_module(WpImplModule *wp_module, WpCore *core) {
     // Store references
     self->module = g_object_ref(wp_module);
     self->core = g_object_ref(core);
+    self->conn = conn;  // Weak reference - don't ref
 
     // WpImplModule is a GObject, not a WpPipeWireObject, so we get properties using GObject API
     self->properties = PyDict_New();

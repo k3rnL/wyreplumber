@@ -89,7 +89,7 @@ PyObject *WPConnection_load_module(WPConnection *self, PyObject *args, PyObject 
     }
 
     // Create Python wrapper for the module
-    PyObject *py_module = WPModule_from_wp_module(data.result, self->core);
+    PyObject *py_module = WPModule_from_wp_module(data.result, self->core, self);
 
     // We don't unref data.result here because WPModule_from_wp_module refs it
     // and it's now managed by the object manager

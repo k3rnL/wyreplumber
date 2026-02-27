@@ -148,15 +148,6 @@ class WPModule:
         """All module properties as a dictionary."""
         ...
 
-    def unload(self) -> None:
-        """
-        Unload this module.
-
-        Raises:
-            RuntimeError: If the module is already unloaded or invalid.
-        """
-        ...
-
 
 @final
 class WPNode:

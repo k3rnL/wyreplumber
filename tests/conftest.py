@@ -1,6 +1,7 @@
 import pytest
 import tempfile
 import os
+import shutil
 
 from pathlib import Path
 from testcontainers.core.wait_strategies import FileExistsWaitStrategy
@@ -9,21 +10,31 @@ from testcontainers.core.image import DockerImage
 
 
 @pytest.fixture(scope="session")
-def pipewire_container():
+def pipewire_image():
     """
-    Fixture that starts a Docker container with PipeWire running.
-    The container exposes its PipeWire socket to the host.
+    Build the PipeWire Docker image once per session.
+    This is cached so we don't rebuild for every test.
     """
-    # Create temporary directories for PipeWire runtime and config on the host
+    image = DockerImage(
+        path=str(Path("tests/pipewire_container").absolute()),
+        tag="pypewire-test"
+    )
+    image.build()
+    yield image.tag
+
+
+@pytest.fixture(scope="function")
+def pipewire_socket(pipewire_image):
+    """
+    Fixture that creates a fresh PipeWire container for each test.
+    This ensures a clean state for every test.
+    """
+    # Create temporary directory for PipeWire runtime
     runtime_dir = tempfile.mkdtemp(prefix="pipewire-runtime-")
     config_dir = str(Path('tests/pipewire_container/config').absolute())
 
-    # Build the image
-    image = DockerImage(path=str(Path("tests/pipewire_container").absolute()), tag="pypewire-test")
-    image.build()
-
-    # Build the container from the Dockerfile
-    container = DockerContainer(image=image.tag)
+    # Create a new container for this test
+    container = DockerContainer(image=pipewire_image)
 
     # Set environment variables
     container.with_env("PIPEWIRE_DEBUG", "3")
@@ -36,26 +47,8 @@ def pipewire_container():
     container.start()
     container.waiting_for(FileExistsWaitStrategy("/pipewire-runtime/pipewire-0"))
 
-    # Copy PipeWire configs from the container to make them available on the host
-    # And set permissions to allow any user to access them
+    # Set permissions to allow any user to access the socket
     container.exec("chmod 777 -R /pipewire-runtime")
-
-    yield {"container": container, "runtime_dir": runtime_dir, "config_dir": config_dir}
-
-    # Cleanup: stop the container and remove temp directories
-    container.stop()
-    import shutil
-    shutil.rmtree(runtime_dir, ignore_errors=True)
-
-
-@pytest.fixture(scope="function")
-def pipewire_socket(pipewire_container):
-    """
-    Fixture that provides the path to the PipeWire socket and sets up environment.
-    Tests can run directly on the host using this socket.
-    """
-    runtime_dir = pipewire_container["runtime_dir"]
-    config_dir = pipewire_container["config_dir"]
 
     # Set environment variables for the duration of the test
     original_runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
@@ -76,3 +69,11 @@ def pipewire_socket(pipewire_container):
         os.environ["PIPEWIRE_CONFIG_DIR"] = original_config_dir
     else:
         os.environ.pop("PIPEWIRE_CONFIG_DIR", None)
+
+    # Cleanup: stop the container and remove temp directory
+    try:
+        container.stop()
+    except Exception:
+        pass  # Ignore errors during cleanup
+
+    shutil.rmtree(runtime_dir, ignore_errors=True)
