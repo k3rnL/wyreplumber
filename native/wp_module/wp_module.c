@@ -85,34 +85,6 @@ PyTypeObject WPModuleType = {
     .tp_getset = WPModule_getsetters,
 };
 
-// Helper to iterate over all properties
-static PyObject *iterate_wp_properties(WpProperties *props) {
-    PyObject *dict = PyDict_New();
-    if (!dict) return NULL;
-
-    if (!props) return dict;
-
-    WpIterator *it = wp_properties_new_iterator(props);
-    g_auto(GValue) item = G_VALUE_INIT;
-
-    while (wp_iterator_next(it, &item)) {
-        WpPropertiesItem *prop_item = g_value_get_boxed(&item);
-        const char *key = wp_properties_item_get_key(prop_item);
-        const char *value = wp_properties_item_get_value(prop_item);
-
-        if (key && value) {
-            PyObject *py_value = PyUnicode_FromString(value);
-            PyDict_SetItemString(dict, key, py_value);
-            Py_DECREF(py_value);
-        }
-
-        g_value_unset(&item);
-    }
-
-    wp_iterator_unref(it);
-    return dict;
-}
-
 PyObject *WPModule_from_wp_module(WpImplModule *wp_module, WpCore *core, WPConnection *conn) {
     WPModule *self = (WPModule *)WPModuleType.tp_alloc(&WPModuleType, 0);
     if (!self) return NULL;

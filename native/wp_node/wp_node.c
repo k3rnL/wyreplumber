@@ -152,8 +152,9 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
 
         // Filter by direction if specified
         if (direction_filter != -1) {
+            const WpDirection requested_direction = (WpDirection) direction_filter;
             WpDirection port_direction = wp_port_get_direction(port);
-            if (port_direction != direction_filter) {
+            if (port_direction != requested_direction) {
                 g_value_unset(&val);
                 continue;
             }

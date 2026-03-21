@@ -1,5 +1,6 @@
 #include "wp_pipewire_object.h"
 
+#include <gio/gio.h>
 #include <spa/pod/pod.h>
 #include <string.h>
 
