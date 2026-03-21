@@ -91,7 +91,7 @@ static void wait_wp_call_completion(WPConnection *conn) {
 
 static void set_oom_error(GError **error, const char *message) {
     if (!*error) {
-        *error = g_error_new_literal(G_IO_ERROR, G_IO_ERROR_NO_MEMORY, message);
+        *error = g_error_new_literal(G_IO_ERROR, G_IO_ERROR_FAILED, message);
     }
 }
 
@@ -267,7 +267,7 @@ static gboolean do_get_param_info_on_wp_thread(gpointer user_data) {
     PyObject *dict = PyDict_New();
     if (!dict) {
         data->error = g_error_new_literal(
-            G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to allocate dict for get_param_info");
+            G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to allocate dict for get_param_info");
         PyErr_Clear();
         PyGILState_Release(gstate);
         goto done;
@@ -289,7 +289,7 @@ static gboolean do_get_param_info_on_wp_thread(gpointer user_data) {
                 PyObject *py_value = PyUnicode_FromString(value ? value : "");
                 if (!py_value || PyDict_SetItemString(dict, key, py_value) < 0) {
                     data->error = g_error_new_literal(
-                        G_IO_ERROR, G_IO_ERROR_NO_MEMORY,
+                        G_IO_ERROR, G_IO_ERROR_FAILED,
                         "Failed to append get_param_info item");
                     PyErr_Clear();
                     Py_XDECREF(py_value);
@@ -319,7 +319,7 @@ static gboolean do_get_params_on_wp_thread(gpointer user_data) {
     PyObject *params = PyDict_New();
     if (!params) {
         data->error = g_error_new_literal(
-            G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to allocate dict for get_params");
+            G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to allocate dict for get_params");
         PyErr_Clear();
         PyGILState_Release(gstate);
         goto done;
@@ -344,7 +344,7 @@ static gboolean do_get_params_on_wp_thread(gpointer user_data) {
             PyObject *values = PyList_New(0);
             if (!values) {
                 data->error = g_error_new_literal(
-                    G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to allocate param values list");
+                    G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to allocate param values list");
                 PyErr_Clear();
                 Py_DECREF(params);
                 params = NULL;
@@ -373,7 +373,7 @@ static gboolean do_get_params_on_wp_thread(gpointer user_data) {
             if (!param_obj) {
                 if (!data->error) {
                     data->error = g_error_new_literal(
-                        G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to create WPParam object");
+                        G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to create WPParam object");
                 }
                 PyErr_Clear();
                 Py_DECREF(params);
@@ -383,7 +383,7 @@ static gboolean do_get_params_on_wp_thread(gpointer user_data) {
 
             if (PyDict_SetItemString(params, param_id, param_obj) < 0) {
                 data->error = g_error_new_literal(
-                    G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to append get_params item");
+                    G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to append get_params item");
                 PyErr_Clear();
                 Py_DECREF(param_obj);
                 Py_DECREF(params);
