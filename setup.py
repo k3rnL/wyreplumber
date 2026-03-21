@@ -17,6 +17,7 @@ setup(
                 "native/wp_connection/get_metadata.c",
                 "native/wp_connection/load_module.c",
                 "native/wp_connection/sync.c",
+                "native/wp_pipewire_object/wp_pipewire_object.c",
                 "native/wp_node/wp_node.c",
                 "native/wp_port/wp_port.c",
                 "native/wp_module/wp_module.c",
@@ -29,6 +30,7 @@ setup(
             include_dirs=[
                 "native",
                 "native/wp_connection",
+                "native/wp_pipewire_object",
                 "native/wp_node",
                 "native/wp_module",
                 "native/wp_metadata",

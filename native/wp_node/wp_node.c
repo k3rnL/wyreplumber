@@ -9,8 +9,6 @@
 // Forward declarations
 static void WPNode_dealloc(WPNode *self);
 static PyObject *WPNode_repr(WPNode *self);
-static PyObject *WPNode_get_id(WPNode *self, void *closure);
-static PyObject *WPNode_get_properties(WPNode *self, void *closure);
 static PyObject *WPNode_get_state(WPNode *self, void *closure);
 static PyObject *WPNode_get_n_input_ports(WPNode *self, void *closure);
 static PyObject *WPNode_get_max_input_ports(WPNode *self, void *closure);
@@ -21,39 +19,20 @@ static PyObject *WPNode_delete(WPNode *self, PyObject *Py_UNUSED(ignored));
 static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs);
 
 static void WPNode_dealloc(WPNode *self) {
-    if (self->node) {
-        g_object_unref(self->node);
-        self->node = NULL;
-    }
-    if (self->core) {
-        g_object_unref(self->core);
-        self->core = NULL;
-    }
     if (self->om) {
         g_object_unref(self->om);
         self->om = NULL;
     }
-    Py_XDECREF(self->properties);
     if (self->error_message) {
         free(self->error_message);
         self->error_message = NULL;
     }
+    WPPipewireObject_clear(&self->base);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject *WPNode_repr(WPNode *self) {
-    guint32 id = wp_proxy_get_bound_id(WP_PROXY(self->node));
-    return PyUnicode_FromFormat("<WPNode id=%u>", id);
-}
-
-static PyObject *WPNode_get_id(WPNode *self, void *closure) {
-    guint32 id = wp_proxy_get_bound_id(WP_PROXY(self->node));
-    return PyLong_FromUnsignedLong(id);
-}
-
-static PyObject *WPNode_get_properties(WPNode *self, void *closure) {
-    Py_INCREF(self->properties);
-    return self->properties;
+    return PyUnicode_FromFormat("<WPNode id=%u>", self->base.id);
 }
 
 static PyObject *WPNode_get_state(WPNode *self, void *closure) {
@@ -84,13 +63,13 @@ static PyObject *WPNode_get_error_message(WPNode *self, void *closure) {
 }
 
 static PyObject *WPNode_delete(WPNode *self, PyObject *Py_UNUSED(ignored)) {
-    if (!self->node) {
+    if (!self->base.pipewire_object) {
         PyErr_SetString(PyExc_RuntimeError, "Node already deleted or invalid");
         return NULL;
     }
 
     // Request destruction of the node
-    wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(self->node));
+    wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(self->base.pipewire_object));
 
     // Mark as deleted by unreffing and NULLing the node
     // This prevents double-delete
@@ -127,12 +106,17 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
         return NULL;
     }
 
+    if (!self->base.pipewire_object || !self->base.core) {
+        PyErr_SetString(PyExc_RuntimeError, "Node object is invalid");
+        return NULL;
+    }
+
     // Create Python list to hold ports
     PyObject *list = PyList_New(0);
     if (!list) return NULL;
 
     // Get node ID for filtering
-    guint32 node_id = wp_proxy_get_bound_id(WP_PROXY(self->node));
+    const guint32 node_id = self->base.id;
 
     // Iterate through all ports in object manager
     g_autoptr(WpIterator) it = wp_object_manager_new_iterator(WP_OBJECT_MANAGER(self->om));
@@ -176,16 +160,24 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
         }
 
         // Create WPPort Python object
-        PyObject *py_port = WPPort_from_wp_port(port, self->core);
+        PyObject *py_port = WPPort_from_wp_port(
+            port,
+            self->base.core,
+            (struct WPConnection *) self->base.connection);
         if (!py_port) {
             g_value_unset(&val);
             Py_DECREF(list);
             return NULL;
         }
 
-        PyList_Append(list, py_port);
-        Py_DECREF(py_port);
+        if (PyList_Append(list, py_port) < 0) {
+            g_value_unset(&val);
+            Py_DECREF(py_port);
+            Py_DECREF(list);
+            return NULL;
+        }
 
+        Py_DECREF(py_port);
         g_value_unset(&val);
     }
 
@@ -193,8 +185,6 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
 }
 
 static PyGetSetDef WPNode_getsetters[] = {
-    {"id", (getter)WPNode_get_id, NULL, "Node ID", NULL},
-    {"properties", (getter)WPNode_get_properties, NULL, "All node properties", NULL},
     {"state", (getter)WPNode_get_state, NULL, "Node state (WP_NODE_STATE_*)", NULL},
     {"n_input_ports", (getter)WPNode_get_n_input_ports, NULL, "Number of input ports", NULL},
     {"max_input_ports", (getter)WPNode_get_max_input_ports, NULL, "Maximum input ports", NULL},
@@ -217,62 +207,40 @@ PyTypeObject WPNodeType = {
     .tp_basicsize = sizeof(WPNode),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_base = &WPPipewireObjectType,
     .tp_repr = (reprfunc)WPNode_repr,
     .tp_dealloc = (destructor)WPNode_dealloc,
     .tp_methods = WPNode_methods,
     .tp_getset = WPNode_getsetters,
 };
 
-// Helper to iterate over all properties
-static PyObject *iterate_wp_properties(WpProperties *props) {
-    PyObject *dict = PyDict_New();
-    if (!dict) return NULL;
-
-    if (!props) return dict;
-
-    WpIterator *it = wp_properties_new_iterator(props);
-    g_auto(GValue) item = G_VALUE_INIT;
-
-    while (wp_iterator_next(it, &item)) {
-        WpPropertiesItem *prop_item = g_value_get_boxed(&item);
-        const char *key = wp_properties_item_get_key(prop_item);
-        const char *value = wp_properties_item_get_value(prop_item);
-
-        if (key && value) {
-            PyObject *py_value = PyUnicode_FromString(value);
-            PyDict_SetItemString(dict, key, py_value);
-            Py_DECREF(py_value);
-        }
-
-        g_value_unset(&item);
-    }
-
-    wp_iterator_unref(it);
-    return dict;
-}
-
-PyObject *WPNode_from_wp_node(WpNode *wp_node, WpCore *core, WpObject *om) {
+PyObject *WPNode_from_wp_node(
+    WpNode *wp_node,
+    WpCore *core,
+    WpObject *om,
+    struct WPConnection *conn)
+{
     WPNode *self = (WPNode *)WPNodeType.tp_alloc(&WPNodeType, 0);
     if (!self) return NULL;
 
-    // Store references
-    self->node = g_object_ref(wp_node);
-    self->core = g_object_ref(core);
-    self->om = om ? g_object_ref(om) : NULL;
-
-    // Get all properties
-    WpProperties *props = wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(wp_node));
-    self->properties = iterate_wp_properties(props);
-    if (!self->properties) {
+    if (!WPPipewireObject_init_from_wp_pipewire_object(
+            &self->base, WP_PIPEWIRE_OBJECT(wp_node), core, conn)) {
         Py_DECREF(self);
         return NULL;
     }
+
+    self->om = om ? g_object_ref(om) : NULL;
 
     // Get state
     const char *error_msg = NULL;
     self->state = wp_node_get_state(wp_node, &error_msg);
     if (error_msg) {
         self->error_message = strdup(error_msg);
+        if (!self->error_message) {
+            Py_DECREF(self);
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate node error message");
+            return NULL;
+        }
     } else {
         self->error_message = NULL;
     }

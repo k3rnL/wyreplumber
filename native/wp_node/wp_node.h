@@ -7,13 +7,13 @@
 
 #include <Python.h>
 #include <wp/wp.h>
+#include "../wp_pipewire_object/wp_pipewire_object.h"
+
+struct WPConnection;
 
 typedef struct {
-    PyObject_HEAD
-    WpNode *node;           // The WirePlumber node object
-    WpCore *core;           // Reference to core for operations like delete
+    WPPipewireObject base;
     WpObject *om;           // Reference to object manager
-    PyObject *properties;   // Dict of all properties
     int state;
     guint n_input_ports;
     guint max_input_ports;
@@ -25,6 +25,10 @@ typedef struct {
 extern PyTypeObject WPNodeType;
 
 // Create a new WPNode from a WpNode
-PyObject *WPNode_from_wp_node(WpNode *wp_node, WpCore *core, WpObject *om);
+PyObject *WPNode_from_wp_node(
+    WpNode *wp_node,
+    WpCore *core,
+    WpObject *om,
+    struct WPConnection *conn);
 
 #endif //PYPEWIRE_WP_NODE_H

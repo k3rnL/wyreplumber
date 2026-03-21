@@ -5,6 +5,7 @@
 #include <Python.h>
 #include <wp/wp.h>
 #include "wp_connection/wp_connection.h"
+#include "wp_pipewire_object/wp_pipewire_object.h"
 #include "wp_node/wp_node.h"
 #include "wp_module/wp_module.h"
 #include "wp_port/wp_port.h"
@@ -32,11 +33,22 @@ PyMODINIT_FUNC PyInit__core(void) {
         return NULL;
     }
 
+    // Register WPPipewireObject base type
+    if (PyType_Ready(&WPPipewireObjectType) < 0) return NULL;
+    Py_INCREF(&WPPipewireObjectType);
+    if (PyModule_AddObject(m, "WPPipewireObject", (PyObject *)&WPPipewireObjectType) < 0) {
+        Py_DECREF(&WPPipewireObjectType);
+        Py_DECREF(&WPConnectionType);
+        Py_DECREF(m);
+        return NULL;
+    }
+
     // Register WPNode type
     if (PyType_Ready(&WPNodeType) < 0) return NULL;
     Py_INCREF(&WPNodeType);
     if (PyModule_AddObject(m, "WPNode", (PyObject *)&WPNodeType) < 0) {
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
         return NULL;
@@ -48,6 +60,7 @@ PyMODINIT_FUNC PyInit__core(void) {
     if (PyModule_AddObject(m, "WPModule", (PyObject *)&WPModuleType) < 0) {
         Py_DECREF(&WPModuleType);
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
         return NULL;
@@ -60,6 +73,7 @@ PyMODINIT_FUNC PyInit__core(void) {
         Py_DECREF(&WPPortType);
         Py_DECREF(&WPModuleType);
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
         return NULL;
@@ -73,6 +87,7 @@ PyMODINIT_FUNC PyInit__core(void) {
         Py_DECREF(&WPPortType);
         Py_DECREF(&WPModuleType);
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
         return NULL;

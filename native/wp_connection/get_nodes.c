@@ -46,7 +46,8 @@ static gboolean do_get_nodes_on_wp_thread(gpointer user_data) {
         }
 
         // Create WPNode Python object
-        PyObject *py_node = WPNode_from_wp_node(node, conn->core, WP_OBJECT(conn->om));
+        PyObject *py_node = WPNode_from_wp_node(
+            node, conn->core, WP_OBJECT(conn->om), (struct WPConnection *) conn);
         if (!py_node) {
             g_value_unset(&val);
             Py_DECREF(list);

@@ -25,7 +25,8 @@ add_library(wyreplumber_core MODULE
         native/wp_metadata/metadata_find.c
         native/wp_metadata/metadata_set.c
         native/wp_metadata/metadata_clear.c
-        native/wp_metadata/metadata_iterate.c)
+        native/wp_metadata/metadata_iterate.c
+        native/wp_pipewire_object/wp_pipewire_object.c)
 
 
 target_include_directories(wyreplumber_core PRIVATE

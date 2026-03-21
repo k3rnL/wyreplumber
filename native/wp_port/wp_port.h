@@ -7,19 +7,18 @@
 
 #include <Python.h>
 #include <wp/wp.h>
+#include "../wp_pipewire_object/wp_pipewire_object.h"
+
+struct WPConnection;
 
 typedef struct {
-    PyObject_HEAD
-    WpPort *port;           // The WirePlumber port object
-    WpCore *core;           // Reference to core for operations
-    PyObject *properties;   // Dict of all properties
-    guint32 id;
+    WPPipewireObject base;
     WpDirection direction;
 } WPPort;
 
 extern PyTypeObject WPPortType;
 
 // Create a new WPPort from a WpPort
-PyObject *WPPort_from_wp_port(WpPort *wp_port, WpCore *core);
+PyObject *WPPort_from_wp_port(WpPort *wp_port, WpCore *core, struct WPConnection *conn);
 
 #endif //PYPEWIRE_WP_PORT_H

@@ -12,6 +12,37 @@ WP_DIRECTION_INPUT: int
 WP_DIRECTION_OUTPUT: int
 
 
+class WPPipewireObject:
+    """
+    Base class for wrappers around WpPipewireObject.
+    """
+
+    @property
+    def id(self) -> int:
+        """The global ID of the object."""
+        ...
+
+    @property
+    def properties(self) -> Dict[str, str]:
+        """All object properties as a dictionary."""
+        ...
+
+    def enum_params(self, id: str) -> List[Dict[str, Any]]:
+        """
+        Enumerate params for a given PipeWire param id.
+
+        Args:
+            id: Param id string (for example, "Props", "Format", "EnumFormat").
+
+        Returns:
+            A list of dicts with:
+            - type (int): SPA pod type
+            - size (int): SPA pod body size in bytes
+            - data (bytes): raw SPA pod bytes (header + body)
+        """
+        ...
+
+
 @final
 class WPMetadata:
     """
@@ -86,32 +117,13 @@ class WPMetadata:
 
 
 @final
-class WPPort:
+class WPPort(WPPipewireObject):
     """
     Represents a WirePlumber port.
 
     This object wraps a WpPort and provides access to its properties
     and direction information.
     """
-
-    @property
-    def id(self) -> int:
-        """The global ID of the port."""
-        ...
-
-    @property
-    def properties(self) -> Dict[str, str]:
-        """
-        All port properties as a dictionary.
-
-        Includes properties like:
-        - port.name: The port name
-        - port.alias: Port alias
-        - node.id: ID of the node this port belongs to
-        - audio.channel: Audio channel designation
-        And many others depending on the port type.
-        """
-        ...
 
     @property
     def direction(self) -> int:
@@ -150,33 +162,13 @@ class WPModule:
 
 
 @final
-class WPNode:
+class WPNode(WPPipewireObject):
     """
     Represents a WirePlumber node.
 
     This object wraps a WpNode and provides access to all its properties,
     state information, and port counts.
     """
-
-    @property
-    def id(self) -> int:
-        """The global ID of the node."""
-        ...
-
-    @property
-    def properties(self) -> Dict[str, str]:
-        """
-        All node properties as a dictionary.
-
-        Includes properties like:
-        - node.name: The node name
-        - node.nick: The node nickname
-        - node.description: Node description
-        - media.class: Media class (e.g., 'Audio/Source', 'Audio/Sink')
-        - application.name: Application name
-        And many others depending on the node type.
-        """
-        ...
 
     @property
     def state(self) -> int:
