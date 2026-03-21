@@ -16,6 +16,7 @@ typedef struct {
 } WPPipewireObject;
 
 extern PyTypeObject WPPipewireObjectType;
+extern PyTypeObject WPParamType;
 
 gboolean WPPipewireObject_init_from_wp_pipewire_object(
     WPPipewireObject *self,

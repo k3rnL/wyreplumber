@@ -42,6 +42,58 @@ class WPPipewireObject:
         """
         ...
 
+    def get_param_info(self) -> Dict[str, str]:
+        """
+        Get the available param ids for this object and their access flags.
+
+        Returns:
+            A dict where:
+            - key (str): param id string
+            - value (str): access flags, using \"r\" (readable) and/or \"w\" (writable)
+        """
+        ...
+
+    def get_params(self) -> Dict[str, "WPParam"]:
+        """
+        Fetch available params in one call.
+
+        Returns:
+            A mapping of param id to WPParam objects.
+        """
+        ...
+
+
+@final
+class WPParam:
+    """
+    Structured PipeWire parameter with permissions and values.
+    """
+
+    @property
+    def id(self) -> str:
+        """PipeWire param id."""
+        ...
+
+    @property
+    def permissions(self) -> str:
+        """Access flags, using \"r\" and/or \"w\"."""
+        ...
+
+    @property
+    def type(self) -> Optional[int]:
+        """SPA pod type of the first value, or None when unavailable."""
+        ...
+
+    def get(self) -> List[Dict[str, Any]]:
+        """Return current values for this param as SPA pod dictionaries."""
+        ...
+
+    def set(self, value: Dict[str, Any] | bytes | bytearray | memoryview, flags: int = 0) -> None:
+        """
+        Set this param using a SPA pod dictionary or bytes-like pod payload.
+        """
+        ...
+
 
 @final
 class WPMetadata:

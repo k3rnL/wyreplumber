@@ -43,11 +43,23 @@ PyMODINIT_FUNC PyInit__core(void) {
         return NULL;
     }
 
+    // Register WPParam type
+    if (PyType_Ready(&WPParamType) < 0) return NULL;
+    Py_INCREF(&WPParamType);
+    if (PyModule_AddObject(m, "WPParam", (PyObject *)&WPParamType) < 0) {
+        Py_DECREF(&WPParamType);
+        Py_DECREF(&WPPipewireObjectType);
+        Py_DECREF(&WPConnectionType);
+        Py_DECREF(m);
+        return NULL;
+    }
+
     // Register WPNode type
     if (PyType_Ready(&WPNodeType) < 0) return NULL;
     Py_INCREF(&WPNodeType);
     if (PyModule_AddObject(m, "WPNode", (PyObject *)&WPNodeType) < 0) {
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPParamType);
         Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
@@ -60,6 +72,7 @@ PyMODINIT_FUNC PyInit__core(void) {
     if (PyModule_AddObject(m, "WPModule", (PyObject *)&WPModuleType) < 0) {
         Py_DECREF(&WPModuleType);
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPParamType);
         Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
@@ -73,6 +86,7 @@ PyMODINIT_FUNC PyInit__core(void) {
         Py_DECREF(&WPPortType);
         Py_DECREF(&WPModuleType);
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPParamType);
         Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
@@ -87,6 +101,7 @@ PyMODINIT_FUNC PyInit__core(void) {
         Py_DECREF(&WPPortType);
         Py_DECREF(&WPModuleType);
         Py_DECREF(&WPNodeType);
+        Py_DECREF(&WPParamType);
         Py_DECREF(&WPPipewireObjectType);
         Py_DECREF(&WPConnectionType);
         Py_DECREF(m);
