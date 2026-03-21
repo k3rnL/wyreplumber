@@ -70,7 +70,7 @@ static gboolean do_enum_params_on_wp_thread(gpointer user_data) {
     PyObject *list = PyList_New(0);
     if (!list) {
         data->error = g_error_new_literal(
-            G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to allocate list for enum_params");
+            G_IO_ERROR, G_DBUS_ERROR_NO_MEMORY, "Failed to allocate list for enum_params");
         PyGILState_Release(gstate);
         goto done;
     }
@@ -90,7 +90,7 @@ static gboolean do_enum_params_on_wp_thread(gpointer user_data) {
             (const char *) spa_pod, (Py_ssize_t) total_size);
         if (!pod_bytes) {
             data->error = g_error_new_literal(
-                G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to allocate bytes for enum_params pod");
+                G_IO_ERROR, G_DBUS_ERROR_NO_MEMORY, "Failed to allocate bytes for enum_params pod");
             g_value_unset(&val);
             Py_DECREF(list);
             list = NULL;
@@ -106,7 +106,7 @@ static gboolean do_enum_params_on_wp_thread(gpointer user_data) {
 
         if (!pod_dict || PyList_Append(list, pod_dict) < 0) {
             data->error = g_error_new_literal(
-                G_IO_ERROR, G_IO_ERROR_NO_MEMORY, "Failed to append enum_params item");
+                G_IO_ERROR, G_DBUS_ERROR_NO_MEMORY, "Failed to append enum_params item");
             Py_XDECREF(pod_dict);
             g_value_unset(&val);
             Py_DECREF(list);
