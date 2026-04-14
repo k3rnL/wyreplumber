@@ -24,12 +24,12 @@ static void on_core_connected(WpCore *core, GParamSpec *pspec, gpointer user_dat
     // interested in Nodes with required features
     wp_object_manager_add_interest(c->om, WP_TYPE_NODE, NULL);
     wp_object_manager_request_object_features(c->om, WP_TYPE_NODE,
-        WP_PROXY_FEATURE_BOUND | WP_PIPEWIRE_OBJECT_FEATURE_INFO);
+        WP_PIPEWIRE_OBJECT_FEATURES_ALL);
 
     // interested in Ports with required features
     wp_object_manager_add_interest(c->om, WP_TYPE_PORT, NULL);
     wp_object_manager_request_object_features(c->om, WP_TYPE_PORT,
-        WP_PROXY_FEATURE_BOUND | WP_PIPEWIRE_OBJECT_FEATURE_INFO);
+        WP_PIPEWIRE_OBJECT_FEATURES_ALL);
 
     // interested in Metadata with required features
     // Note: Metadata uses WP_METADATA_FEATURE_DATA instead of WP_PIPEWIRE_OBJECT_FEATURE_INFO
