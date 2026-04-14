@@ -19,9 +19,9 @@ static PyObject *WPNode_delete(WPNode *self, PyObject *Py_UNUSED(ignored));
 static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs);
 
 static void WPNode_dealloc(WPNode *self) {
-    if (self->om) {
-        g_object_unref(self->om);
-        self->om = NULL;
+    if (self->object_manager) {
+        g_object_unref(self->object_manager);
+        self->object_manager = NULL;
     }
     if (self->error_message) {
         free(self->error_message);
@@ -71,10 +71,8 @@ static PyObject *WPNode_delete(WPNode *self, PyObject *Py_UNUSED(ignored)) {
     // Request destruction of the node
     wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(self->base.pipewire_object));
 
-    // Mark as deleted by unreffing and NULLing the node
-    // This prevents double-delete
-    g_object_unref(self->node);
-    self->node = NULL;
+    g_object_unref(self->base.pipewire_object);
+    self->base.pipewire_object = NULL;
 
     Py_RETURN_NONE;
 }
@@ -101,7 +99,7 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
         }
     }
 
-    if (!self->om) {
+    if (!self->object_manager) {
         PyErr_SetString(PyExc_RuntimeError, "Object manager not available");
         return NULL;
     }
@@ -119,7 +117,7 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
     const guint32 node_id = self->base.id;
 
     // Iterate through all ports in object manager
-    g_autoptr(WpIterator) it = wp_object_manager_new_iterator(WP_OBJECT_MANAGER(self->om));
+    g_autoptr(WpIterator) it = wp_object_manager_new_iterator(WP_OBJECT_MANAGER(self->object_manager));
     g_auto(GValue) val = G_VALUE_INIT;
 
     while (wp_iterator_next(it, &val)) {
@@ -230,7 +228,7 @@ PyObject *WPNode_from_wp_node(
         return NULL;
     }
 
-    self->om = om ? g_object_ref(om) : NULL;
+    self->object_manager = om ? g_object_ref(om) : NULL;
 
     // Get state
     const char *error_msg = NULL;

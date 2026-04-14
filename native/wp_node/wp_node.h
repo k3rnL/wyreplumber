@@ -13,7 +13,7 @@ struct WPConnection;
 
 typedef struct {
     WPPipewireObject base;
-    WpObject *om;           // Reference to object manager
+    WpObject *object_manager;           // Reference to object manager
     int state;
     guint n_input_ports;
     guint max_input_ports;

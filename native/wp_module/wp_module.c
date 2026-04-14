@@ -11,7 +11,6 @@ static PyObject *WPModule_repr(WPModule *self);
 static PyObject *WPModule_get_name(WPModule *self, void *closure);
 static PyObject *WPModule_get_arguments(WPModule *self, void *closure);
 static PyObject *WPModule_get_properties(WPModule *self, void *closure);
-static PyObject *WPModule_unload(WPModule *self, PyObject *Py_UNUSED(ignored));
 
 static void WPModule_dealloc(WPModule *self) {
     if (self->module && G_IS_OBJECT(self->module)) {

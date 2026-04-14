@@ -26,6 +26,7 @@ add_library(wyreplumber_core MODULE
         native/wp_metadata/metadata_set.c
         native/wp_metadata/metadata_clear.c
         native/wp_metadata/metadata_iterate.c
+        native/wp_pipewire_object/wp_pipewire_object.c
         native/wp_pipewire_object/wp_pipewire_object.c)
 
 
@@ -33,7 +34,7 @@ target_include_directories(wyreplumber_core PRIVATE
         ${Python3_INCLUDE_DIRS}
         ${PIPEWIRE_INCLUDE_DIRS}
         ${WIREPLUMBER_INCLUDE_DIRS}
-        src/native
+        native
 )
 
 target_compile_options(wyreplumber_core PRIVATE
