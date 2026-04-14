@@ -84,13 +84,33 @@ class WPParam:
         """SPA pod type of the first value, or None when unavailable."""
         ...
 
-    def get(self) -> List[Dict[str, Any]]:
-        """Return current values for this param as SPA pod dictionaries."""
+    def get(self, parse: bool = True) -> List[Any]:
+        """
+        Return current values for this param.
+
+        Args:
+            parse: If True (default), parse SPA pods into Python types using wyreplumber.spa_pod.
+                   If False, return raw SPA pod dictionaries with 'type', 'size', and 'data' keys.
+
+        Returns:
+            List of parsed Python values (when parse=True) or SPA pod dictionaries (when parse=False).
+        """
         ...
 
-    def set(self, value: Dict[str, Any] | bytes | bytearray | memoryview, flags: int = 0) -> None:
+    def set(self, value: Any, flags: int = 0) -> None:
         """
-        Set this param using a SPA pod dictionary or bytes-like pod payload.
+        Set this param using a Python value or SPA pod.
+
+        Args:
+            value: Can be any of:
+                - Python value (int, float, bool, str, bytes) - automatically converted to SPA pod
+                - SPA pod dictionary with 'type', 'size', and 'data' keys
+                - bytes/bytearray/memoryview containing raw SPA pod data
+            flags: Optional flags for the set operation (default: 0)
+
+        Raises:
+            RuntimeError: If the set operation fails
+            ValueError: If the value cannot be converted to a SPA pod
         """
         ...
 

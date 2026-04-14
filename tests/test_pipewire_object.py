@@ -317,22 +317,24 @@ def test_wparam_get(pipewire_socket):
     # Track params with values to ensure at least some params have values
     params_with_values = 0
 
-    # Test get() on each param
+    # Test get() on each param (now returns parsed values by default)
     for param_id, param_obj in params.items():
-        values = param_obj.get()
+        parsed_values = param_obj.get()
+        raw_values = param_obj.get(parse=False)
 
-        assert isinstance(values, list), f"get() for param '{param_id}' should return a list"
+        assert isinstance(parsed_values, list), f"get() for param '{param_id}' should return a list"
+        assert isinstance(raw_values, list), f"get(parse=False) for param '{param_id}' should return a list"
 
         # Count params that have values
-        if len(values) > 0:
+        if len(parsed_values) > 0:
             params_with_values += 1
 
-        # Verify structure of values (if any)
-        for value in values:
-            assert isinstance(value, dict), "Each value should be a dict"
-            assert 'type' in value, "Value should have 'type' field"
-            assert 'size' in value, "Value should have 'size' field"
-            assert 'data' in value, "Value should have 'data' field"
+        # Verify raw values have the expected structure
+        for value in raw_values:
+            assert isinstance(value, dict), "Each raw value should be a dict"
+            assert 'type' in value, "Raw value should have 'type' field"
+            assert 'size' in value, "Raw value should have 'size' field"
+            assert 'data' in value, "Raw value should have 'data' field"
 
     # Ensure at least some params have values (not all may be activated)
     assert params_with_values > 0, "At least some params should have values"

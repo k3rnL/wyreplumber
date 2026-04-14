@@ -62,7 +62,7 @@ static PyObject *WPParam_repr(WPParam *self);
 static PyObject *WPParam_get_id(WPParam *self, void *closure);
 static PyObject *WPParam_get_permissions(WPParam *self, void *closure);
 static PyObject *WPParam_get_type(WPParam *self, void *closure);
-static PyObject *WPParam_get(WPParam *self, PyObject *Py_UNUSED(ignored));
+static PyObject *WPParam_get(WPParam *self, PyObject *args, PyObject *kwargs);
 static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs);
 
 static void signal_call_completed(WPConnection *conn) {
@@ -667,18 +667,70 @@ static PyObject *WPParam_get_type(WPParam *self, void *closure) {
     return self->type;
 }
 
-static PyObject *WPParam_get(WPParam *self, PyObject *Py_UNUSED(ignored)) {
-    return PySequence_List(self->values);
+static PyObject *WPParam_get(WPParam *self, PyObject *args, PyObject *kwargs) {
+    static char *kwlist[] = {"parse", NULL};
+    int parse = 1;  // Default to parsing
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|p", kwlist, &parse)) {
+        return NULL;
+    }
+
+    PyObject *values = PySequence_List(self->values);
+    if (!values) {
+        return NULL;
+    }
+
+    if (!parse) {
+        // Return raw values without parsing
+        return values;
+    }
+
+    // Parse each pod using the Python spa_pod module
+    PyObject *spa_pod_module = PyImport_ImportModule("wyreplumber.spa_pod");
+    if (!spa_pod_module) {
+        Py_DECREF(values);
+        return NULL;
+    }
+
+    PyObject *parse_func = PyObject_GetAttrString(spa_pod_module, "parse_spa_pod_dict");
+    Py_DECREF(spa_pod_module);
+
+    if (!parse_func) {
+        Py_DECREF(values);
+        return NULL;
+    }
+
+    // Parse each value
+    Py_ssize_t count = PyList_GET_SIZE(values);
+    for (Py_ssize_t i = 0; i < count; i++) {
+        PyObject *item = PyList_GET_ITEM(values, i);  // borrowed
+        PyObject *parsed = PyObject_CallFunctionObjArgs(parse_func, item, NULL);
+
+        if (!parsed) {
+            Py_DECREF(parse_func);
+            Py_DECREF(values);
+            return NULL;
+        }
+
+        // Replace the item in the list
+        PyList_SET_ITEM(values, i, parsed);  // steals ref to parsed
+    }
+
+    Py_DECREF(parse_func);
+    return values;
 }
 
 static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     static char *kwlist[] = {"value", "flags", NULL};
     PyObject *value_obj = NULL;
+    PyObject *original_value = NULL;
     guint32 flags = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|I", kwlist, &value_obj, &flags)) {
         return NULL;
     }
+
+    original_value = value_obj;  // Keep track of original for cleanup
 
     if (!self->owner || !self->owner->pipewire_object) {
         PyErr_SetString(PyExc_RuntimeError, "PipeWire object is invalid");
@@ -697,7 +749,42 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     }
 
     PyObject *data_obj = value_obj;
-    if (PyDict_Check(value_obj)) {
+    PyObject *built_pod = NULL;
+
+    // Try to build a SPA pod from a Python value using spa_pod module
+    if (!PyDict_Check(value_obj) || !PyDict_GetItemString(value_obj, "data")) {
+        // Not a raw pod dict - try to build one from Python value
+        PyObject *spa_pod_module = PyImport_ImportModule("wyreplumber.spa_pod");
+        if (spa_pod_module) {
+            PyObject *build_func = PyObject_GetAttrString(spa_pod_module, "build_spa_pod_dict");
+            Py_DECREF(spa_pod_module);
+
+            if (build_func) {
+                built_pod = PyObject_CallFunctionObjArgs(build_func, value_obj, NULL);
+                Py_DECREF(build_func);
+
+                if (built_pod) {
+                    // Successfully built a pod dict, use it
+                    value_obj = built_pod;
+                    data_obj = PyDict_GetItemString(value_obj, "data");  // borrowed
+                    if (!data_obj) {
+                        Py_DECREF(built_pod);
+                        PyErr_SetString(PyExc_RuntimeError, "Built pod dict missing 'data' field");
+                        return NULL;
+                    }
+                } else {
+                    // build failed, clear error and try as raw data
+                    PyErr_Clear();
+                    data_obj = value_obj;
+                }
+            } else {
+                PyErr_Clear();
+            }
+        } else {
+            PyErr_Clear();
+        }
+    } else if (PyDict_Check(value_obj)) {
+        // It's a dict, extract data field
         data_obj = PyDict_GetItemString(value_obj, "data");  // borrowed
         if (!data_obj) {
             PyErr_SetString(PyExc_TypeError, "param dict must contain a 'data' field");
@@ -707,12 +794,14 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
 
     Py_buffer view;
     if (PyObject_GetBuffer(data_obj, &view, PyBUF_SIMPLE) < 0) {
-        PyErr_SetString(PyExc_TypeError, "value must be bytes-like or a dict with 'data' bytes");
+        Py_XDECREF(built_pod);
+        PyErr_SetString(PyExc_TypeError, "value must be a Python type, bytes-like, or a dict with 'data' bytes");
         return NULL;
     }
 
     if (view.len < (Py_ssize_t) sizeof(struct spa_pod)) {
         PyBuffer_Release(&view);
+        Py_XDECREF(built_pod);
         PyErr_SetString(PyExc_ValueError, "param data is too small to be a valid SPA pod");
         return NULL;
     }
@@ -722,6 +811,7 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     const gsize total_size = sizeof(struct spa_pod) + header.size;
     if ((gsize) view.len < total_size) {
         PyBuffer_Release(&view);
+        Py_XDECREF(built_pod);
         PyErr_SetString(PyExc_ValueError, "param data length does not match SPA pod size");
         return NULL;
     }
@@ -732,6 +822,7 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     }
     PyBuffer_Release(&view);
     if (!pod_copy) {
+        Py_XDECREF(built_pod);
         PyErr_NoMemory();
         return NULL;
     }
@@ -739,6 +830,7 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     WpSpaPod *wrapped = wp_spa_pod_new_wrap((struct spa_pod *) pod_copy);
     if (!wrapped) {
         g_free(pod_copy);
+        Py_XDECREF(built_pod);
         PyErr_SetString(PyExc_RuntimeError, "Failed to wrap SPA pod data");
         return NULL;
     }
@@ -747,6 +839,7 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     wp_spa_pod_unref(wrapped);
     g_free(pod_copy);
     if (!param) {
+        Py_XDECREF(built_pod);
         PyErr_SetString(PyExc_RuntimeError, "Failed to copy SPA pod data");
         return NULL;
     }
@@ -754,6 +847,7 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     const char *param_id = PyUnicode_AsUTF8(self->id);
     if (!param_id) {
         wp_spa_pod_unref(param);
+        Py_XDECREF(built_pod);
         return NULL;
     }
 
@@ -781,12 +875,14 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
     }
 
     if (data.error) {
+        Py_XDECREF(built_pod);
         PyErr_SetString(PyExc_RuntimeError, data.error->message);
         g_error_free(data.error);
         return NULL;
     }
 
     if (!data.success) {
+        Py_XDECREF(built_pod);
         PyErr_SetString(PyExc_RuntimeError, "Failed to set param");
         return NULL;
     }
@@ -802,6 +898,7 @@ static PyObject *WPParam_set(WPParam *self, PyObject *args, PyObject *kwargs) {
         PyErr_Clear();
     }
 
+    Py_XDECREF(built_pod);
     Py_RETURN_NONE;
 }
 
@@ -844,8 +941,8 @@ static PyMethodDef WPParam_methods[] = {
     {
         "get",
         (PyCFunction) WPParam_get,
-        METH_NOARGS,
-        "Return current values for this param"
+        METH_VARARGS | METH_KEYWORDS,
+        "Return current values for this param. Use parse=True (default) to get Python objects, parse=False for raw bytes."
     },
     {
         "set",
