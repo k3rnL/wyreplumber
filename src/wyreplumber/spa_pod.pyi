@@ -37,6 +37,10 @@ SPA_CHOICE_Enum: int
 SPA_CHOICE_Flags: int
 
 
+def __getattr__(name: str) -> Any:
+    ...
+
+
 def parse_spa_pod(data: bytes, offset: int = 0) -> Any:
     """
     Parse a SPA pod from bytes and return a Python representation.
