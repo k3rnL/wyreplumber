@@ -91,101 +91,95 @@ def test_pointer_and_embedded_pod_roundtrip():
 
 
 def test_props_object_specialization_roundtrip():
-    value = {
-        "object_type": spa_pod.SPA_TYPE_OBJECT_Props,
-        "object_id": spa_pod.SPA_PARAM_Props,
-        "properties": {
-            "mute": True,
-            "volume": 0.75,
-            "channelMap": [1, 2],
-            "params": {"api.alsa.path": "hw:0", "session.suspend-timeout-seconds": 5},
-        },
-    }
+    value = spa_pod.SpaProps(
+        mute=True,
+        volume=0.75,
+        channelMap=[1, 2],
+        params={"api.alsa.path": "hw:0", "session.suspend-timeout-seconds": 5},
+    )
 
     parsed = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(value))
 
-    assert parsed["object_name"] == "Props"
-    assert parsed["properties"]["mute"] is True
-    assert math.isclose(parsed["properties"]["volume"], 0.75, rel_tol=1e-6)
-    assert parsed["properties"]["channelMap"] == [1, 2]
-    assert parsed["properties"]["params"] == {
+    assert isinstance(parsed, spa_pod.SpaProps)
+    assert parsed.object_name == "Props"
+    assert parsed.mute is True
+    assert parsed["mute"] is True
+    assert parsed[spa_pod.SPA_PROP_mute] is True
+    assert math.isclose(parsed.volume, 0.75, rel_tol=1e-6)
+    assert math.isclose(parsed["volume"], 0.75, rel_tol=1e-6)
+    assert math.isclose(parsed[spa_pod.SPA_PROP_volume], 0.75, rel_tol=1e-6)
+    assert parsed.channelMap == [1, 2]
+    assert parsed.params == {
         "api.alsa.path": "hw:0",
         "session.suspend-timeout-seconds": 5,
     }
-    assert parsed["property_keys"]["mute"] == spa_pod.SPA_PROP_mute
+    assert parsed.property_keys["mute"] == spa_pod.SPA_PROP_mute
+    parsed[spa_pod.SPA_PROP_volume] = 0.25
+    assert math.isclose(parsed.volume, 0.25, rel_tol=1e-6)
+    parsed.mute = False
+    assert parsed["mute"] is False
 
 
 def test_route_and_format_specialization_roundtrip():
-    value = {
-        "object_type": spa_pod.SPA_TYPE_OBJECT_ParamRoute,
-        "object_id": spa_pod.SPA_PARAM_Route,
-        "properties": {
-            "index": 2,
-            "direction": spa_pod.SPA_DIRECTION_OUTPUT,
-            "name": "speaker",
-            "profiles": [3, 5],
-            "info": {"device.icon-name": "audio-speakers"},
-            "props": {
-                "mute": False,
-                "volume": 0.5,
-            },
-        },
-    }
+    value = spa_pod.SpaParamRoute(
+        index=2,
+        direction=spa_pod.SPA_DIRECTION_OUTPUT,
+        name="speaker",
+        profiles=[3, 5],
+        info={"device.icon-name": "audio-speakers"},
+        props=spa_pod.SpaProps(mute=False, volume=0.5),
+    )
 
     parsed = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(value))
-    nested_props = parsed["properties"]["props"]
+    nested_props = parsed.props
 
-    assert parsed["properties"]["profiles"] == [3, 5]
-    assert parsed["properties"]["info"] == {"device.icon-name": "audio-speakers"}
-    assert nested_props["object_id"] == spa_pod.SPA_PARAM_Props
-    assert nested_props["properties"]["mute"] is False
-    assert math.isclose(nested_props["properties"]["volume"], 0.5, rel_tol=1e-6)
+    assert isinstance(parsed, spa_pod.SpaParamRoute)
+    assert parsed.profiles == [3, 5]
+    assert parsed.info == {"device.icon-name": "audio-speakers"}
+    assert isinstance(nested_props, spa_pod.SpaProps)
+    assert nested_props.object_id == spa_pod.SPA_PARAM_Props
+    assert nested_props.mute is False
+    assert math.isclose(nested_props.volume, 0.5, rel_tol=1e-6)
 
-    format_value = {
-        "object_type": spa_pod.SPA_TYPE_OBJECT_Format,
-        "object_id": spa_pod.SPA_PARAM_Format,
-        "properties": {
-            "mediaType": spa_pod.SPA_MEDIA_TYPE_audio,
-            "mediaSubtype": spa_pod.SPA_MEDIA_SUBTYPE_raw,
-            "audio_format": 4,
-            "audio_rate": 48000,
-            "audio_channels": 2,
-            "audio_position": [1, 2],
-        },
-    }
+    format_value = spa_pod.SpaFormat(
+        mediaType=spa_pod.SPA_MEDIA_TYPE_audio,
+        mediaSubtype=spa_pod.SPA_MEDIA_SUBTYPE_raw,
+        audio_format=4,
+        audio_rate=48000,
+        audio_channels=2,
+        audio_position=[1, 2],
+    )
 
     parsed_format = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(format_value))
-    assert parsed_format["properties"]["mediaType"] == spa_pod.SPA_MEDIA_TYPE_audio
-    assert parsed_format["properties"]["audio_rate"] == 48000
-    assert parsed_format["properties"]["audio_position"] == [1, 2]
+    assert isinstance(parsed_format, spa_pod.SpaFormat)
+    assert parsed_format.mediaType == spa_pod.SPA_MEDIA_TYPE_audio
+    assert parsed_format.audio_rate == 48000
+    assert parsed_format.audio_position == [1, 2]
 
 
 def test_profile_classes_and_dict_helpers():
-    profile_value = {
-        "object_type": spa_pod.SPA_TYPE_OBJECT_ParamProfile,
-        "object_id": spa_pod.SPA_PARAM_Profile,
-        "properties": {
-            "index": 1,
-            "name": "analog-stereo",
-            "info": {"device.api": "alsa", "card.profile.device": "0"},
-            "classes": [
-                {
-                    "class": "Audio/Source",
-                    "count": 1,
-                    "property": "device.profile.description",
-                    "devices": [0, 1],
-                }
-            ],
-            "save": True,
-        },
-    }
+    profile_value = spa_pod.SpaParamProfile(
+        index=1,
+        name="analog-stereo",
+        info={"device.api": "alsa", "card.profile.device": "0"},
+        classes=[
+            {
+                "class": "Audio/Source",
+                "count": 1,
+                "property": "device.profile.description",
+                "devices": [0, 1],
+            }
+        ],
+        save=True,
+    )
 
     parsed_profile = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(profile_value))
-    assert parsed_profile["properties"]["info"] == {
+    assert isinstance(parsed_profile, spa_pod.SpaParamProfile)
+    assert parsed_profile.info == {
         "device.api": "alsa",
         "card.profile.device": "0",
     }
-    assert parsed_profile["properties"]["classes"] == [
+    assert parsed_profile.classes == [
         {
             "class": "Audio/Source",
             "count": 1,
@@ -198,3 +192,9 @@ def test_profile_classes_and_dict_helpers():
     assert pod_dict["type"] == spa_pod.SPA_TYPE_String
     assert spa_pod.parse_spa_pod_dict(pod_dict) == "hello"
     assert spa_pod.parse_spa_pod_dict({"data": "not-bytes"}) == {"data": "not-bytes"}
+
+
+def test_typed_object_runtime_docs():
+    assert "Typed SPA object" in (spa_pod.SpaProps.__doc__ or "")
+    assert "attribute, string key, or numeric" in (spa_pod.SpaProps.volume.__doc__ or "")
+    assert "typed Python objects" in (spa_pod.parse_spa_pod.__doc__ or "")
