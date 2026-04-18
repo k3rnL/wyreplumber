@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, MutableMapping
+from enum import IntEnum
 import struct
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Type
 
 
 # SPA pod type constants
@@ -166,6 +167,278 @@ SPA_PARAM_AVAILABILITY_yes = 2
 SPA_PARAM_BITORDER_unknown = 0
 SPA_PARAM_BITORDER_msb = 1
 SPA_PARAM_BITORDER_lsb = 2
+
+
+class SpaDirection(IntEnum):
+    INPUT = SPA_DIRECTION_INPUT
+    OUTPUT = SPA_DIRECTION_OUTPUT
+
+
+class SpaMediaType(IntEnum):
+    UNKNOWN = SPA_MEDIA_TYPE_unknown
+    AUDIO = SPA_MEDIA_TYPE_audio
+    VIDEO = SPA_MEDIA_TYPE_video
+    IMAGE = SPA_MEDIA_TYPE_image
+    BINARY = SPA_MEDIA_TYPE_binary
+    STREAM = SPA_MEDIA_TYPE_stream
+    APPLICATION = SPA_MEDIA_TYPE_application
+
+
+class SpaMediaSubtype(IntEnum):
+    UNKNOWN = 0
+    RAW = 1
+    DSP = 2
+    IEC958 = 3
+    DSD = 4
+    START_AUDIO = 0x10000
+    MP3 = START_AUDIO + 1
+    AAC = START_AUDIO + 2
+    VORBIS = START_AUDIO + 3
+    WMA = START_AUDIO + 4
+    RA = START_AUDIO + 5
+    SBC = START_AUDIO + 6
+    ADPCM = START_AUDIO + 7
+    G723 = START_AUDIO + 8
+    G726 = START_AUDIO + 9
+    G729 = START_AUDIO + 10
+    AMR = START_AUDIO + 11
+    GSM = START_AUDIO + 12
+    ALAC = START_AUDIO + 13
+    FLAC = START_AUDIO + 14
+    APE = START_AUDIO + 15
+    OPUS = START_AUDIO + 16
+    AC3 = START_AUDIO + 17
+    EAC3 = START_AUDIO + 18
+    TRUEHD = START_AUDIO + 19
+    DTS = START_AUDIO + 20
+    MPEGH = START_AUDIO + 21
+    START_VIDEO = 0x20000
+    H264 = START_VIDEO + 1
+    MJPG = START_VIDEO + 2
+    DV = START_VIDEO + 3
+    MPEGTS = START_VIDEO + 4
+    H263 = START_VIDEO + 5
+    MPEG1 = START_VIDEO + 6
+    MPEG2 = START_VIDEO + 7
+    MPEG4 = START_VIDEO + 8
+    XVID = START_VIDEO + 9
+    VC1 = START_VIDEO + 10
+    VP8 = START_VIDEO + 11
+    VP9 = START_VIDEO + 12
+    BAYER = START_VIDEO + 13
+    H265 = START_VIDEO + 14
+    START_IMAGE = 0x30000
+    JPEG = START_IMAGE + 1
+    START_BINARY = 0x40000
+    START_STREAM = 0x50000
+    MIDI = START_STREAM + 1
+    START_APPLICATION = 0x60000
+    CONTROL = START_APPLICATION + 1
+
+
+class SpaParamAvailability(IntEnum):
+    UNKNOWN = SPA_PARAM_AVAILABILITY_unknown
+    NO = SPA_PARAM_AVAILABILITY_no
+    YES = SPA_PARAM_AVAILABILITY_yes
+
+
+class SpaParamBitorder(IntEnum):
+    UNKNOWN = SPA_PARAM_BITORDER_unknown
+    MSB = SPA_PARAM_BITORDER_msb
+    LSB = SPA_PARAM_BITORDER_lsb
+
+
+class SpaParamPortConfigMode(IntEnum):
+    NONE = SPA_PARAM_PORT_CONFIG_MODE_none
+    PASSTHROUGH = SPA_PARAM_PORT_CONFIG_MODE_passthrough
+    CONVERT = SPA_PARAM_PORT_CONFIG_MODE_convert
+    DSP = SPA_PARAM_PORT_CONFIG_MODE_dsp
+
+
+class SpaAudioFormat(IntEnum):
+    UNKNOWN = 0
+    ENCODED = 1
+    START_INTERLEAVED = 0x100
+    S8 = START_INTERLEAVED + 1
+    U8 = START_INTERLEAVED + 2
+    S16_LE = START_INTERLEAVED + 3
+    S16_BE = START_INTERLEAVED + 4
+    U16_LE = START_INTERLEAVED + 5
+    U16_BE = START_INTERLEAVED + 6
+    S24_32_LE = START_INTERLEAVED + 7
+    S24_32_BE = START_INTERLEAVED + 8
+    U24_32_LE = START_INTERLEAVED + 9
+    U24_32_BE = START_INTERLEAVED + 10
+    S32_LE = START_INTERLEAVED + 11
+    S32_BE = START_INTERLEAVED + 12
+    U32_LE = START_INTERLEAVED + 13
+    U32_BE = START_INTERLEAVED + 14
+    S24_LE = START_INTERLEAVED + 15
+    S24_BE = START_INTERLEAVED + 16
+    U24_LE = START_INTERLEAVED + 17
+    U24_BE = START_INTERLEAVED + 18
+    S20_LE = START_INTERLEAVED + 19
+    S20_BE = START_INTERLEAVED + 20
+    U20_LE = START_INTERLEAVED + 21
+    U20_BE = START_INTERLEAVED + 22
+    S18_LE = START_INTERLEAVED + 23
+    S18_BE = START_INTERLEAVED + 24
+    U18_LE = START_INTERLEAVED + 25
+    U18_BE = START_INTERLEAVED + 26
+    F32_LE = START_INTERLEAVED + 27
+    F32_BE = START_INTERLEAVED + 28
+    F64_LE = START_INTERLEAVED + 29
+    F64_BE = START_INTERLEAVED + 30
+    ULAW = START_INTERLEAVED + 31
+    ALAW = START_INTERLEAVED + 32
+    START_PLANAR = 0x200
+    U8P = START_PLANAR + 1
+    S16P = START_PLANAR + 2
+    S24_32P = START_PLANAR + 3
+    S32P = START_PLANAR + 4
+    S24P = START_PLANAR + 5
+    F32P = START_PLANAR + 6
+    F64P = START_PLANAR + 7
+    S8P = START_PLANAR + 8
+    START_OTHER = 0x400
+    DSP_S32 = S24_32P
+    DSP_F32 = F32P
+    DSP_F64 = F64P
+
+
+class SpaAudioChannel(IntEnum):
+    UNKNOWN = 0
+    NA = 1
+    MONO = 2
+    FL = 3
+    FR = 4
+    FC = 5
+    LFE = 6
+    SL = 7
+    SR = 8
+    FLC = 9
+    FRC = 10
+    RC = 11
+    RL = 12
+    RR = 13
+    TC = 14
+    TFL = 15
+    TFC = 16
+    TFR = 17
+    TRL = 18
+    TRC = 19
+    TRR = 20
+    RLC = 21
+    RRC = 22
+    FLW = 23
+    FRW = 24
+    LFE2 = 25
+    FLH = 26
+    FCH = 27
+    FRH = 28
+    TFLC = 29
+    TFRC = 30
+    TSL = 31
+    TSR = 32
+    LLFE = 33
+    RLFE = 34
+    BC = 35
+    BLC = 36
+    BRC = 37
+    START_AUX = 0x1000
+    AUX0 = START_AUX
+
+
+class SpaAudioIec958Codec(IntEnum):
+    UNKNOWN = 0
+    PCM = 1
+    DTS = 2
+    AC3 = 3
+    MPEG = 4
+    MPEG2_AAC = 5
+    EAC3 = 6
+    TRUEHD = 7
+    DTSHD = 8
+
+
+class SpaAudioAACStreamFormat(IntEnum):
+    UNKNOWN = 0
+    RAW = 1
+    MP2ADTS = 2
+    MP4ADTS = 3
+    MP4LOAS = 4
+    MP4LATM = 5
+    ADIF = 6
+    MP4FF = 7
+    CUSTOM = 0x10000
+
+
+class SpaAudioWMAProfile(IntEnum):
+    UNKNOWN = 0
+    WMA7 = 1
+    WMA8 = 2
+    WMA9 = 3
+    WMA10 = 4
+    WMA9_PRO = 5
+    WMA9_LOSSLESS = 6
+    WMA10_LOSSLESS = 7
+    CUSTOM = 0x10000
+
+
+class SpaAudioAMRBandMode(IntEnum):
+    UNKNOWN = 0
+    NB = 1
+    WB = 2
+
+
+class SpaAudioMP3ChannelMode(IntEnum):
+    UNKNOWN = 0
+    MONO = 1
+    STEREO = 2
+    JOINTSTEREO = 3
+    DUAL = 4
+
+
+class SpaAudioDTSExtType(IntEnum):
+    UNKNOWN = 0
+    NONE = 1
+    HD_HRA = 2
+    HD_MA = 3
+
+
+class SpaAudioVolumeRampScale(IntEnum):
+    INVALID = 0
+    LINEAR = 1
+    CUBIC = 2
+
+
+class SpaBluetoothAudioCodec(IntEnum):
+    START = 0
+    SBC = 1
+    SBC_XQ = 2
+    MPEG = 3
+    AAC = 4
+    AAC_ELD = 5
+    APTX = 6
+    APTX_HD = 7
+    LDAC = 8
+    APTX_LL = 9
+    APTX_LL_DUPLEX = 10
+    FASTSTREAM = 11
+    FASTSTREAM_DUPLEX = 12
+    LC3PLUS_HR = 13
+    OPUS_05 = 14
+    OPUS_05_51 = 15
+    OPUS_05_71 = 16
+    OPUS_05_DUPLEX = 17
+    OPUS_05_PRO = 18
+    OPUS_G = 19
+    CVSD = 0x100
+    MSBC = 0x101
+    LC3_SWB = 0x102
+    LC3_A127 = 0x103
+    LC3 = 0x200
+    G722 = 0x300
 
 # Control type constants
 SPA_CONTROL_Invalid = 0
@@ -383,6 +656,7 @@ class PropertySpec:
     name: str
     pod_type: Optional[int] = None
     shape: Optional[str] = None
+    enum_cls: Optional[Type[IntEnum]] = None
 
 
 def _object_property(spec: PropertySpec) -> property:
@@ -640,7 +914,7 @@ PROPS_SPECS = [
     PropertySpec(SPA_PROP_live, "live", SPA_TYPE_Bool),
     PropertySpec(SPA_PROP_rate, "rate", SPA_TYPE_Int),
     PropertySpec(SPA_PROP_quality, "quality", SPA_TYPE_Int),
-    PropertySpec(SPA_PROP_bluetoothAudioCodec, "bluetoothAudioCodec", SPA_TYPE_Id),
+    PropertySpec(SPA_PROP_bluetoothAudioCodec, "bluetoothAudioCodec", SPA_TYPE_Id, enum_cls=SpaBluetoothAudioCodec),
     PropertySpec(SPA_PROP_bluetoothOffloadActive, "bluetoothOffloadActive", SPA_TYPE_Bool),
     PropertySpec(SPA_PROP_params, "params", SPA_TYPE_Struct, "params"),
     PropertySpec(SPA_PROP_clockId, "clockId", SPA_TYPE_Int),
@@ -661,18 +935,18 @@ PROPS_SPECS = [
     PropertySpec(SPA_PROP_channelVolumes, "channelVolumes", SPA_TYPE_Array, "array_float"),
     PropertySpec(SPA_PROP_volumeBase, "volumeBase", SPA_TYPE_Float),
     PropertySpec(SPA_PROP_volumeStep, "volumeStep", SPA_TYPE_Float),
-    PropertySpec(SPA_PROP_channelMap, "channelMap", SPA_TYPE_Array, "array_id"),
+    PropertySpec(SPA_PROP_channelMap, "channelMap", SPA_TYPE_Array, "array_id", SpaAudioChannel),
     PropertySpec(SPA_PROP_monitorMute, "monitorMute", SPA_TYPE_Bool),
     PropertySpec(SPA_PROP_monitorVolumes, "monitorVolumes", SPA_TYPE_Array, "array_float"),
     PropertySpec(SPA_PROP_latencyOffsetNsec, "latencyOffsetNsec", SPA_TYPE_Long),
     PropertySpec(SPA_PROP_softMute, "softMute", SPA_TYPE_Bool),
     PropertySpec(SPA_PROP_softVolumes, "softVolumes", SPA_TYPE_Array, "array_float"),
-    PropertySpec(SPA_PROP_iec958Codecs, "iec958Codecs", SPA_TYPE_Array, "array_id"),
+    PropertySpec(SPA_PROP_iec958Codecs, "iec958Codecs", SPA_TYPE_Array, "array_id", SpaAudioIec958Codec),
     PropertySpec(SPA_PROP_volumeRampSamples, "volumeRampSamples", SPA_TYPE_Int),
     PropertySpec(SPA_PROP_volumeRampStepSamples, "volumeRampStepSamples", SPA_TYPE_Int),
     PropertySpec(SPA_PROP_volumeRampTime, "volumeRampTime", SPA_TYPE_Int),
     PropertySpec(SPA_PROP_volumeRampStepTime, "volumeRampStepTime", SPA_TYPE_Int),
-    PropertySpec(SPA_PROP_volumeRampScale, "volumeRampScale", SPA_TYPE_Id),
+    PropertySpec(SPA_PROP_volumeRampScale, "volumeRampScale", SPA_TYPE_Id, enum_cls=SpaAudioVolumeRampScale),
     PropertySpec(SPA_PROP_brightness, "brightness", SPA_TYPE_Float),
     PropertySpec(SPA_PROP_contrast, "contrast", SPA_TYPE_Float),
     PropertySpec(SPA_PROP_saturation, "saturation", SPA_TYPE_Float),
@@ -684,23 +958,23 @@ PROPS_SPECS = [
 ]
 
 FORMAT_SPECS = [
-    PropertySpec(SPA_FORMAT_mediaType, "mediaType", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_mediaSubtype, "mediaSubtype", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_AUDIO_format, "audio_format", SPA_TYPE_Id),
+    PropertySpec(SPA_FORMAT_mediaType, "mediaType", SPA_TYPE_Id, enum_cls=SpaMediaType),
+    PropertySpec(SPA_FORMAT_mediaSubtype, "mediaSubtype", SPA_TYPE_Id, enum_cls=SpaMediaSubtype),
+    PropertySpec(SPA_FORMAT_AUDIO_format, "audio_format", SPA_TYPE_Id, enum_cls=SpaAudioFormat),
     PropertySpec(SPA_FORMAT_AUDIO_flags, "audio_flags", SPA_TYPE_Int),
     PropertySpec(SPA_FORMAT_AUDIO_rate, "audio_rate", SPA_TYPE_Int),
     PropertySpec(SPA_FORMAT_AUDIO_channels, "audio_channels", SPA_TYPE_Int),
-    PropertySpec(SPA_FORMAT_AUDIO_position, "audio_position", SPA_TYPE_Array, "array_id"),
-    PropertySpec(SPA_FORMAT_AUDIO_iec958Codec, "audio_iec958Codec", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_AUDIO_bitorder, "audio_bitorder", SPA_TYPE_Id),
+    PropertySpec(SPA_FORMAT_AUDIO_position, "audio_position", SPA_TYPE_Array, "array_id", SpaAudioChannel),
+    PropertySpec(SPA_FORMAT_AUDIO_iec958Codec, "audio_iec958Codec", SPA_TYPE_Id, enum_cls=SpaAudioIec958Codec),
+    PropertySpec(SPA_FORMAT_AUDIO_bitorder, "audio_bitorder", SPA_TYPE_Id, enum_cls=SpaParamBitorder),
     PropertySpec(SPA_FORMAT_AUDIO_interleave, "audio_interleave", SPA_TYPE_Int),
     PropertySpec(SPA_FORMAT_AUDIO_bitrate, "audio_bitrate", SPA_TYPE_Int),
     PropertySpec(SPA_FORMAT_AUDIO_blockAlign, "audio_blockAlign", SPA_TYPE_Int),
-    PropertySpec(SPA_FORMAT_AUDIO_AAC_streamFormat, "audio_AAC_streamFormat", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_AUDIO_WMA_profile, "audio_WMA_profile", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_AUDIO_AMR_bandMode, "audio_AMR_bandMode", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_AUDIO_MP3_channelMode, "audio_MP3_channelMode", SPA_TYPE_Id),
-    PropertySpec(SPA_FORMAT_AUDIO_DTS_extType, "audio_DTS_extType", SPA_TYPE_Id),
+    PropertySpec(SPA_FORMAT_AUDIO_AAC_streamFormat, "audio_AAC_streamFormat", SPA_TYPE_Id, enum_cls=SpaAudioAACStreamFormat),
+    PropertySpec(SPA_FORMAT_AUDIO_WMA_profile, "audio_WMA_profile", SPA_TYPE_Id, enum_cls=SpaAudioWMAProfile),
+    PropertySpec(SPA_FORMAT_AUDIO_AMR_bandMode, "audio_AMR_bandMode", SPA_TYPE_Id, enum_cls=SpaAudioAMRBandMode),
+    PropertySpec(SPA_FORMAT_AUDIO_MP3_channelMode, "audio_MP3_channelMode", SPA_TYPE_Id, enum_cls=SpaAudioMP3ChannelMode),
+    PropertySpec(SPA_FORMAT_AUDIO_DTS_extType, "audio_DTS_extType", SPA_TYPE_Id, enum_cls=SpaAudioDTSExtType),
     PropertySpec(SPA_FORMAT_VIDEO_format, "video_format", SPA_TYPE_Id),
     PropertySpec(SPA_FORMAT_VIDEO_modifier, "video_modifier", SPA_TYPE_Long),
     PropertySpec(SPA_FORMAT_VIDEO_size, "video_size", SPA_TYPE_Rectangle),
@@ -752,15 +1026,15 @@ PROFILE_SPECS = [
     PropertySpec(SPA_PARAM_PROFILE_name, "name", SPA_TYPE_String),
     PropertySpec(SPA_PARAM_PROFILE_description, "description", SPA_TYPE_String),
     PropertySpec(SPA_PARAM_PROFILE_priority, "priority", SPA_TYPE_Int),
-    PropertySpec(SPA_PARAM_PROFILE_available, "available", SPA_TYPE_Id),
+    PropertySpec(SPA_PARAM_PROFILE_available, "available", SPA_TYPE_Id, enum_cls=SpaParamAvailability),
     PropertySpec(SPA_PARAM_PROFILE_info, "info", SPA_TYPE_Struct, "dict_info"),
     PropertySpec(SPA_PARAM_PROFILE_classes, "classes", SPA_TYPE_Struct, "profile_classes"),
     PropertySpec(SPA_PARAM_PROFILE_save, "save", SPA_TYPE_Bool),
 ]
 
 PORT_CONFIG_SPECS = [
-    PropertySpec(SPA_PARAM_PORT_CONFIG_direction, "direction", SPA_TYPE_Id),
-    PropertySpec(SPA_PARAM_PORT_CONFIG_mode, "mode", SPA_TYPE_Id),
+    PropertySpec(SPA_PARAM_PORT_CONFIG_direction, "direction", SPA_TYPE_Id, enum_cls=SpaDirection),
+    PropertySpec(SPA_PARAM_PORT_CONFIG_mode, "mode", SPA_TYPE_Id, enum_cls=SpaParamPortConfigMode),
     PropertySpec(SPA_PARAM_PORT_CONFIG_monitor, "monitor", SPA_TYPE_Bool),
     PropertySpec(SPA_PARAM_PORT_CONFIG_control, "control", SPA_TYPE_Bool),
     PropertySpec(SPA_PARAM_PORT_CONFIG_format, "format", SPA_TYPE_Object, "object_format"),
@@ -768,12 +1042,12 @@ PORT_CONFIG_SPECS = [
 
 ROUTE_SPECS = [
     PropertySpec(SPA_PARAM_ROUTE_index, "index", SPA_TYPE_Int),
-    PropertySpec(SPA_PARAM_ROUTE_direction, "direction", SPA_TYPE_Id),
+    PropertySpec(SPA_PARAM_ROUTE_direction, "direction", SPA_TYPE_Id, enum_cls=SpaDirection),
     PropertySpec(SPA_PARAM_ROUTE_device, "device", SPA_TYPE_Int),
     PropertySpec(SPA_PARAM_ROUTE_name, "name", SPA_TYPE_String),
     PropertySpec(SPA_PARAM_ROUTE_description, "description", SPA_TYPE_String),
     PropertySpec(SPA_PARAM_ROUTE_priority, "priority", SPA_TYPE_Int),
-    PropertySpec(SPA_PARAM_ROUTE_available, "available", SPA_TYPE_Id),
+    PropertySpec(SPA_PARAM_ROUTE_available, "available", SPA_TYPE_Id, enum_cls=SpaParamAvailability),
     PropertySpec(SPA_PARAM_ROUTE_info, "info", SPA_TYPE_Struct, "dict_info"),
     PropertySpec(SPA_PARAM_ROUTE_profiles, "profiles", SPA_TYPE_Array, "array_int"),
     PropertySpec(SPA_PARAM_ROUTE_props, "props", SPA_TYPE_Object, "object_props"),
@@ -783,7 +1057,7 @@ ROUTE_SPECS = [
 ]
 
 LATENCY_SPECS = [
-    PropertySpec(SPA_PARAM_LATENCY_direction, "direction", SPA_TYPE_Id),
+    PropertySpec(SPA_PARAM_LATENCY_direction, "direction", SPA_TYPE_Id, enum_cls=SpaDirection),
     PropertySpec(SPA_PARAM_LATENCY_minQuantum, "minQuantum", SPA_TYPE_Float),
     PropertySpec(SPA_PARAM_LATENCY_maxQuantum, "maxQuantum", SPA_TYPE_Float),
     PropertySpec(SPA_PARAM_LATENCY_minRate, "minRate", SPA_TYPE_Int),
@@ -799,7 +1073,7 @@ PROCESS_LATENCY_SPECS = [
 ]
 
 TAG_SPECS = [
-    PropertySpec(SPA_PARAM_TAG_direction, "direction", SPA_TYPE_Id),
+    PropertySpec(SPA_PARAM_TAG_direction, "direction", SPA_TYPE_Id, enum_cls=SpaDirection),
     PropertySpec(SPA_PARAM_TAG_info, "info", SPA_TYPE_Struct, "dict_info"),
 ]
 

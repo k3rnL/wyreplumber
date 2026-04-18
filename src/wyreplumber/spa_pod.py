@@ -19,6 +19,7 @@ raw information is lost.
 
 from __future__ import annotations
 
+from enum import IntEnum
 import struct
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -338,7 +339,7 @@ def _resolve_property_name(object_id: int, prop_key: int) -> Any:
 
 def _specialize_property_value(object_id: int, prop_key: int, value: Any) -> Any:
     spec = _property_spec_by_key(object_id, prop_key)
-    if spec is None or spec.shape is None:
+    if spec is None:
         return value
 
     if spec.shape == "dict_info":
@@ -354,13 +355,18 @@ def _specialize_property_value(object_id: int, prop_key: int, value: Any) -> Any
     if spec.shape == "array_float":
         return _array_to_values(value, float)
     if spec.shape == "array_id":
-        return _array_to_values(value, int)
+        values = _array_to_values(value, int)
+        if spec.enum_cls is None:
+            return values
+        return [_coerce_enum_member(item, spec.enum_cls) for item in values]
+    if spec.enum_cls is not None:
+        return _coerce_enum_property_value(value, spec.enum_cls)
     return value
 
 
 def _prepare_property_value(object_id: int, prop_key: int, value: Any) -> Any:
     spec = _property_spec_by_key(object_id, prop_key)
-    if spec is None or spec.shape is None:
+    if spec is None:
         return value
 
     if spec.shape == "dict_info":
@@ -381,6 +387,10 @@ def _prepare_property_value(object_id: int, prop_key: int, value: Any) -> Any:
         return _ensure_object_value(value, SPA_TYPE_OBJECT_Props, SPA_PARAM_Props)
     if spec.shape == "object_format":
         return _ensure_object_value(value, SPA_TYPE_OBJECT_Format, SPA_PARAM_Format)
+    if spec.enum_cls is not None and isinstance(value, Mapping) and "choice_type" in value:
+        prepared_value = dict(value)
+        prepared_value.setdefault("child_type", SPA_TYPE_Id)
+        return prepared_value
     return value
 
 
@@ -388,6 +398,33 @@ def _array_to_values(value: Any, convert: Any) -> Any:
     if not isinstance(value, Mapping) or value.get("_pod_type") != SPA_TYPE_Array:
         return value
     return [convert(item) for item in value.get("values", [])]
+
+
+def _coerce_enum_member(value: Any, enum_cls: type[IntEnum]) -> Any:
+    if isinstance(value, enum_cls):
+        return value
+    if isinstance(value, int):
+        try:
+            return enum_cls(value)
+        except ValueError:
+            return value
+    return value
+
+
+def _coerce_enum_property_value(value: Any, enum_cls: type[IntEnum]) -> Any:
+    if not isinstance(value, Mapping) or value.get("_pod_type") != SPA_TYPE_Choice:
+        return _coerce_enum_member(value, enum_cls)
+
+    choice_value = dict(value)
+    if "values" in choice_value:
+        choice_value["values"] = [_coerce_enum_member(item, enum_cls) for item in choice_value["values"]]
+    for key in ("value", "default", "min", "max", "step"):
+        if key in choice_value:
+            choice_value[key] = _coerce_enum_member(choice_value[key], enum_cls)
+    for key in ("alternatives", "flags_values"):
+        if key in choice_value:
+            choice_value[key] = [_coerce_enum_member(item, enum_cls) for item in choice_value[key]]
+    return choice_value
 
 
 def _struct_to_dict_info(value: Any) -> Any:
@@ -840,6 +877,8 @@ def _infer_spa_type(value: Any) -> int:
         return SPA_TYPE_None
     if isinstance(value, bool):
         return SPA_TYPE_Bool
+    if isinstance(value, IntEnum):
+        return SPA_TYPE_Id
     if isinstance(value, int):
         if -2147483648 <= value <= 2147483647:
             return SPA_TYPE_Int

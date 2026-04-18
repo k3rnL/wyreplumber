@@ -142,19 +142,60 @@ def test_route_and_format_specialization_roundtrip():
     assert math.isclose(nested_props.volume, 0.5, rel_tol=1e-6)
 
     format_value = spa_pod.SpaFormat(
-        mediaType=spa_pod.SPA_MEDIA_TYPE_audio,
-        mediaSubtype=spa_pod.SPA_MEDIA_SUBTYPE_raw,
-        audio_format=4,
+        mediaType=spa_pod.SpaMediaType.AUDIO,
+        mediaSubtype=spa_pod.SpaMediaSubtype.RAW,
+        audio_format=spa_pod.SpaAudioFormat.S16_BE,
         audio_rate=48000,
         audio_channels=2,
-        audio_position=[1, 2],
+        audio_position=[spa_pod.SpaAudioChannel.FL, spa_pod.SpaAudioChannel.FR],
+        audio_bitorder=spa_pod.SpaParamBitorder.MSB,
     )
 
     parsed_format = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(format_value))
     assert isinstance(parsed_format, spa_pod.SpaFormat)
-    assert parsed_format.mediaType == spa_pod.SPA_MEDIA_TYPE_audio
+    assert parsed_format.mediaType is spa_pod.SpaMediaType.AUDIO
+    assert parsed_format.mediaSubtype is spa_pod.SpaMediaSubtype.RAW
+    assert parsed_format.audio_format is spa_pod.SpaAudioFormat.S16_BE
     assert parsed_format.audio_rate == 48000
-    assert parsed_format.audio_position == [1, 2]
+    assert parsed_format.audio_position == [spa_pod.SpaAudioChannel.FL, spa_pod.SpaAudioChannel.FR]
+    assert parsed_format.audio_bitorder is spa_pod.SpaParamBitorder.MSB
+
+
+def test_spa_pod_enum_properties_and_choices_roundtrip():
+    props_value = spa_pod.SpaProps(
+        bluetoothAudioCodec=spa_pod.SpaBluetoothAudioCodec.LDAC,
+        channelMap=[spa_pod.SpaAudioChannel.FL, spa_pod.SpaAudioChannel.FR],
+        iec958Codecs=[spa_pod.SpaAudioIec958Codec.PCM],
+        volumeRampScale=spa_pod.SpaAudioVolumeRampScale.LINEAR,
+    )
+
+    parsed_props = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(props_value))
+    assert parsed_props.bluetoothAudioCodec is spa_pod.SpaBluetoothAudioCodec.LDAC
+    assert parsed_props.channelMap == [spa_pod.SpaAudioChannel.FL, spa_pod.SpaAudioChannel.FR]
+    assert parsed_props.iec958Codecs == [spa_pod.SpaAudioIec958Codec.PCM]
+    assert parsed_props.volumeRampScale is spa_pod.SpaAudioVolumeRampScale.LINEAR
+
+    enum_format = spa_pod.SpaFormat(
+        mediaType=spa_pod.SpaMediaType.AUDIO,
+        mediaSubtype=spa_pod.SpaMediaSubtype.RAW,
+        audio_format={
+            "_pod_type": spa_pod.SPA_TYPE_Choice,
+            "choice_type": spa_pod.SPA_CHOICE_Enum,
+            "values": [
+                spa_pod.SpaAudioFormat.F32_LE,
+                spa_pod.SpaAudioFormat.S16_LE,
+            ],
+        },
+    )
+
+    parsed_enum_format = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(enum_format))
+    assert parsed_enum_format.audio_format["child_type"] == spa_pod.SPA_TYPE_Id
+    assert parsed_enum_format.audio_format["default"] is spa_pod.SpaAudioFormat.F32_LE
+    assert parsed_enum_format.audio_format["alternatives"] == [spa_pod.SpaAudioFormat.S16_LE]
+    assert parsed_enum_format.audio_format["values"] == [
+        spa_pod.SpaAudioFormat.F32_LE,
+        spa_pod.SpaAudioFormat.S16_LE,
+    ]
 
 
 def test_profile_classes_and_dict_helpers():
