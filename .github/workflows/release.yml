@@ -253,9 +253,15 @@ jobs:
             --commit "${GITHUB_SHA}" \
             --repository "${GITHUB_REPOSITORY}"
 
-      - name: Create GitHub release with verified bytes
+      - name: Create draft GitHub release with verified bytes
         uses: softprops/action-gh-release@v2
         with:
+          draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: release_dist/*
+
+      - name: Publish only after every verified byte is attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${GITHUB_REF_NAME}" --draft=false
