@@ -152,6 +152,10 @@ suite against PipeWire and a real WirePlumber 0.5 process, followed by native
 linkage, Python ABI, architecture, package-version, and build-family checks.
 The tag job depends on the same gates and publishes each wheel and the single
 source archive with per-file SHA-256 and portable JSON provenance records.
+Publication requires GitHub's repository immutable-release policy: the workflow
+first creates a draft, attaches the complete verified matrix, and only then
+publishes it. The published release tag and assets cannot be changed; a failed
+release is corrected with a new version rather than a moved tag.
 
 Release procedure:
 
