@@ -426,14 +426,16 @@ static gboolean do_set_param_on_wp_thread(gpointer user_data) {
 void WPPipewireObject_clear(WPPipewireObject *self) {
     if (!self) return;
 
-    if (self->pipewire_object) {
-        g_object_unref(self->pipewire_object);
-        self->pipewire_object = NULL;
-    }
-    if (self->core) {
-        g_object_unref(self->core);
-        self->core = NULL;
-    }
+    GObject *objects[] = {
+        self->pipewire_object ? G_OBJECT(self->pipewire_object) : NULL,
+        self->core ? G_OBJECT(self->core) : NULL,
+    };
+    WPConnection *conn = self->connection &&
+        PyObject_TypeCheck(self->connection, &WPConnectionType)
+        ? (WPConnection *) self->connection : NULL;
+    self->pipewire_object = NULL;
+    self->core = NULL;
+    wp_connection_unref_objects(conn, objects, G_N_ELEMENTS(objects));
     Py_XDECREF(self->connection);
     self->connection = NULL;
     Py_XDECREF(self->properties);

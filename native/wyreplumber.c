@@ -11,6 +11,10 @@
 #include "wp_port/wp_port.h"
 #include "wp_metadata/wp_metadata.h"
 
+#ifndef WYREPLUMBER_WP_API_FAMILY
+#define WYREPLUMBER_WP_API_FAMILY "unknown"
+#endif
+
 static struct PyModuleDef module = { PyModuleDef_HEAD_INIT, "_core", NULL, -1, NULL };
 
 PyMODINIT_FUNC PyInit__core(void) {
@@ -118,6 +122,8 @@ PyMODINIT_FUNC PyInit__core(void) {
     // Add direction constants
     PyModule_AddIntConstant(m, "WP_DIRECTION_INPUT", WP_DIRECTION_INPUT);
     PyModule_AddIntConstant(m, "WP_DIRECTION_OUTPUT", WP_DIRECTION_OUTPUT);
+    PyModule_AddStringConstant(
+        m, "WIREPLUMBER_BUILD_API_FAMILY", WYREPLUMBER_WP_API_FAMILY);
 
     return m;
 }

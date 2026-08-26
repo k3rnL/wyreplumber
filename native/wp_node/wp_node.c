@@ -3,6 +3,7 @@
 //
 
 #include "wp_node.h"
+#include "../wp_connection/wp_connection.h"
 #include "../wp_port/wp_port.h"
 #include <pipewire/keys.h>
 
@@ -20,8 +21,12 @@ static PyObject *WPNode_get_ports(WPNode *self, PyObject *args, PyObject *kwargs
 
 static void WPNode_dealloc(WPNode *self) {
     if (self->object_manager) {
-        g_object_unref(self->object_manager);
+        GObject *objects[] = {G_OBJECT(self->object_manager)};
+        WPConnection *conn = self->base.connection &&
+            PyObject_TypeCheck(self->base.connection, &WPConnectionType)
+            ? (WPConnection *) self->base.connection : NULL;
         self->object_manager = NULL;
+        wp_connection_unref_objects(conn, objects, G_N_ELEMENTS(objects));
     }
     if (self->error_message) {
         free(self->error_message);
@@ -62,17 +67,55 @@ static PyObject *WPNode_get_error_message(WPNode *self, void *closure) {
     Py_RETURN_NONE;
 }
 
+typedef struct {
+    WPConnection *conn;
+    WPNode *node;
+} DeleteNodeData;
+
+static gboolean delete_node_on_wp_thread(gpointer user_data) {
+    DeleteNodeData *data = user_data;
+    WpPipewireObject *object = data->node->base.pipewire_object;
+    if (object) {
+        wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(object));
+        g_object_unref(object);
+        data->node->base.pipewire_object = NULL;
+    }
+
+    g_mutex_lock(&data->conn->call_lock);
+    data->conn->call_completed = TRUE;
+    g_cond_signal(&data->conn->call_cond);
+    g_mutex_unlock(&data->conn->call_lock);
+    return G_SOURCE_REMOVE;
+}
+
 static PyObject *WPNode_delete(WPNode *self, PyObject *Py_UNUSED(ignored)) {
     if (!self->base.pipewire_object) {
         PyErr_SetString(PyExc_RuntimeError, "Node already deleted or invalid");
         return NULL;
     }
 
-    // Request destruction of the node
-    wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(self->base.pipewire_object));
+    if (!self->base.connection) {
+        PyErr_SetString(PyExc_RuntimeError, "Node connection is invalid");
+        return NULL;
+    }
+    WPConnection *conn = (WPConnection *) self->base.connection;
+    DeleteNodeData data = {.conn = conn, .node = self};
+    g_mutex_lock(&conn->call_lock);
+    conn->call_completed = FALSE;
+    g_mutex_unlock(&conn->call_lock);
 
-    g_object_unref(self->base.pipewire_object);
-    self->base.pipewire_object = NULL;
+    GSource *source = g_idle_source_new();
+    g_source_set_callback(source, delete_node_on_wp_thread, &data, NULL);
+    g_source_attach(source, conn->ctx);
+    g_source_unref(source);
+
+    Py_BEGIN_ALLOW_THREADS
+    g_mutex_lock(&conn->call_lock);
+    while (!conn->call_completed) {
+        g_cond_wait(&conn->call_cond, &conn->call_lock);
+    }
+    g_mutex_unlock(&conn->call_lock);
+    Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }

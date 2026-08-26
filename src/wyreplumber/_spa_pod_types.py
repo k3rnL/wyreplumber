@@ -475,7 +475,6 @@ SPA_PROP_rate = SPA_PROP_START_Device + 12
 SPA_PROP_quality = SPA_PROP_START_Device + 13
 SPA_PROP_bluetoothAudioCodec = SPA_PROP_START_Device + 14
 SPA_PROP_bluetoothOffloadActive = SPA_PROP_START_Device + 15
-SPA_PROP_params = SPA_PROP_START_Device + 16
 SPA_PROP_clockId = SPA_PROP_START_Device + 17
 SPA_PROP_clockName = SPA_PROP_START_Device + 18
 SPA_PROP_clockQuantumLimit = SPA_PROP_START_Device + 19
@@ -516,6 +515,8 @@ SPA_PROP_gamma = SPA_PROP_START_Video + 5
 SPA_PROP_exposure = SPA_PROP_START_Video + 6
 SPA_PROP_gain = SPA_PROP_START_Video + 7
 SPA_PROP_sharpness = SPA_PROP_START_Video + 8
+SPA_PROP_START_Other = 0x80000
+SPA_PROP_params = SPA_PROP_START_Other + 1
 
 # Format keys
 SPA_FORMAT_START = 0

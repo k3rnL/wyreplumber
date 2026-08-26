@@ -6,7 +6,19 @@ set(CMAKE_C_STANDARD 11)
 find_package(Python3 REQUIRED COMPONENTS Development)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
-pkg_check_modules(WIREPLUMBER REQUIRED wireplumber-0.4)
+set(WYREPLUMBER_WP_API "0.5" CACHE STRING "Required WirePlumber API family (0.4 or 0.5)")
+if (WYREPLUMBER_WP_API STREQUAL "0.5")
+    pkg_check_modules(WIREPLUMBER REQUIRED wireplumber-0.5)
+    set(WYREPLUMBER_WP_API_FAMILY "0.5")
+    set(WYREPLUMBER_WP_API_0_5 1)
+elseif (WYREPLUMBER_WP_API STREQUAL "0.4")
+    pkg_check_modules(WIREPLUMBER REQUIRED wireplumber-0.4)
+    set(WYREPLUMBER_WP_API_FAMILY "0.4")
+    set(WYREPLUMBER_WP_API_0_5 0)
+    message(WARNING "Building the legacy proxy migration surface with WirePlumber 0.4")
+else ()
+    message(FATAL_ERROR "WYREPLUMBER_WP_API must be 0.4 or 0.5")
+endif ()
 
 add_library(wyreplumber_core MODULE
         native/wyreplumber.c
@@ -15,6 +27,10 @@ add_library(wyreplumber_core MODULE
         native/wp_connection/get_nodes.c
         native/wp_connection/get_modules.c
         native/wp_connection/get_metadata.c
+        native/wp_connection/capture_runtime.c
+        native/wp_connection/runtime_events.c
+        native/wp_connection/lifecycle.c
+        native/wp_connection/mutation_dispatch.c
         native/wp_connection/load_module.c
         native/wp_connection/sync.c
         native/wp_node/wp_node.c
@@ -26,7 +42,6 @@ add_library(wyreplumber_core MODULE
         native/wp_metadata/metadata_set.c
         native/wp_metadata/metadata_clear.c
         native/wp_metadata/metadata_iterate.c
-        native/wp_pipewire_object/wp_pipewire_object.c
         native/wp_pipewire_object/wp_pipewire_object.c)
 
 
@@ -40,6 +55,11 @@ target_include_directories(wyreplumber_core PRIVATE
 target_compile_options(wyreplumber_core PRIVATE
         ${PIPEWIRE_CFLAGS_OTHER}
         ${WIREPLUMBER_CFLAGS_OTHER}
+)
+
+target_compile_definitions(wyreplumber_core PRIVATE
+        WYREPLUMBER_WP_API_FAMILY="${WYREPLUMBER_WP_API_FAMILY}"
+        WYREPLUMBER_WP_API_0_5=${WYREPLUMBER_WP_API_0_5}
 )
 
 target_link_directories(wyreplumber_core PRIVATE

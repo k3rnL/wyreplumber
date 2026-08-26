@@ -1,0 +1,23 @@
+{
+  "wireplumber_family": "0.5",
+  "representation": "parsed-spa",
+  "owner_type": "node",
+  "owner_id": 20,
+  "parameter_id": "Props",
+  "permissions": "rw",
+  "values": [
+    {
+      "object_id": 2,
+      "properties": {
+        "volume": 0.8,
+        "mute": false,
+        "channelVolumes": [0.75, 0.8],
+        "channelMap": [3, 4],
+        "vendor.future": {
+          "enabled": true,
+          "calibration": [1, 2, 3]
+        }
+      }
+    }
+  ]
+}

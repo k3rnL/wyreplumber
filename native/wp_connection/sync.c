@@ -91,5 +91,8 @@ gboolean wp_connection_sync(WPConnection *conn) {
 
 
 PyObject *WPConnection_sync(WPConnection *self, PyObject *Py_UNUSED(ignored)) {
-    return PyBool_FromLong(wp_connection_sync(self));
+    if (!wp_connection_sync(self)) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }

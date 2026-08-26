@@ -15,7 +15,7 @@ typedef struct {
     PyObject_HEAD
     WpMetadata *metadata;   // The WirePlumber metadata object
     WpCore *core;           // Reference to core for operations
-    struct WPConnection *conn;     // Reference to connection for sync operations
+    PyObject *connection;   // Strong reference to connection
     PyObject *properties;   // Dict of all properties
     guint32 id;
 } WPMetadata;

@@ -13,16 +13,17 @@ static PyObject *WPModule_get_arguments(WPModule *self, void *closure);
 static PyObject *WPModule_get_properties(WPModule *self, void *closure);
 
 static void WPModule_dealloc(WPModule *self) {
-    if (self->module && G_IS_OBJECT(self->module)) {
-        g_object_unref(self->module);
-        self->module = NULL;
-    }
-    if (self->core && G_IS_OBJECT(self->core)) {
-        g_object_unref(self->core);
-        self->core = NULL;
-    }
-    // Don't unref conn - we don't own it, it's just a weak reference
-    self->conn = NULL;
+    GObject *objects[] = {
+        self->module && G_IS_OBJECT(self->module) ? G_OBJECT(self->module) : NULL,
+        self->core && G_IS_OBJECT(self->core) ? G_OBJECT(self->core) : NULL,
+    };
+    WPConnection *conn = self->connection &&
+        PyObject_TypeCheck(self->connection, &WPConnectionType)
+        ? (WPConnection *) self->connection : NULL;
+    self->module = NULL;
+    self->core = NULL;
+    wp_connection_unref_objects(conn, objects, G_N_ELEMENTS(objects));
+    Py_CLEAR(self->connection);
 
     Py_XDECREF(self->properties);
     if (self->name) {
@@ -91,7 +92,7 @@ PyObject *WPModule_from_wp_module(WpImplModule *wp_module, WpCore *core, WPConne
     // Initialize all pointers to NULL first
     self->module = NULL;
     self->core = NULL;
-    self->conn = NULL;
+    self->connection = NULL;
     self->properties = NULL;
     self->name = NULL;
     self->arguments = NULL;
@@ -99,7 +100,7 @@ PyObject *WPModule_from_wp_module(WpImplModule *wp_module, WpCore *core, WPConne
     // Store references
     self->module = g_object_ref(wp_module);
     self->core = g_object_ref(core);
-    self->conn = conn;  // Weak reference - don't ref
+    self->connection = conn ? Py_NewRef((PyObject *) conn) : NULL;
 
     // WpImplModule is a GObject, not a WpPipeWireObject, so we get properties using GObject API
     self->properties = PyDict_New();

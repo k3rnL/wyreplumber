@@ -197,6 +197,35 @@ def test_spa_pod_enum_properties_and_choices_roundtrip():
         spa_pod.SpaAudioFormat.S16_LE,
     ]
 
+    positions_format = spa_pod.SpaFormat(
+        audio_position={
+            "_pod_type": spa_pod.SPA_TYPE_Choice,
+            "choice_type": spa_pod.SPA_CHOICE_Enum,
+            "child_type": spa_pod.SPA_TYPE_Array,
+            "values": [
+                {
+                    "_pod_type": spa_pod.SPA_TYPE_Array,
+                    "child_type": spa_pod.SPA_TYPE_Id,
+                    "values": [spa_pod.SpaAudioChannel.FL, spa_pod.SpaAudioChannel.FR],
+                },
+                {
+                    "_pod_type": spa_pod.SPA_TYPE_Array,
+                    "child_type": spa_pod.SPA_TYPE_Id,
+                    "values": [spa_pod.SpaAudioChannel.FC, spa_pod.SpaAudioChannel.LFE],
+                },
+            ],
+        }
+    )
+    parsed_positions = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(positions_format))
+    assert parsed_positions.audio_position["default"] == [
+        spa_pod.SpaAudioChannel.FL,
+        spa_pod.SpaAudioChannel.FR,
+    ]
+    assert parsed_positions.audio_position["alternatives"] == [[
+        spa_pod.SpaAudioChannel.FC,
+        spa_pod.SpaAudioChannel.LFE,
+    ]]
+
 
 def test_profile_classes_and_dict_helpers():
     profile_value = spa_pod.SpaParamProfile(
@@ -234,6 +263,41 @@ def test_profile_classes_and_dict_helpers():
     assert spa_pod.parse_spa_pod_dict(pod_dict) == "hello"
     assert spa_pod.parse_spa_pod_dict({"data": "not-bytes"}) == {"data": "not-bytes"}
 
+
+def test_profile_classes_accept_pipewire_uncounted_struct():
+    profile_value = spa_pod.SpaParamProfile(
+        index=2,
+        name="a2dp-sink",
+        classes={
+            "_pod_type": spa_pod.SPA_TYPE_Struct,
+            "values": [
+                {
+                    "_pod_type": spa_pod.SPA_TYPE_Struct,
+                    "values": [
+                        "Audio/Sink",
+                        1,
+                        "card.profile.devices",
+                        {
+                            "_pod_type": spa_pod.SPA_TYPE_Array,
+                            "child_type": spa_pod.SPA_TYPE_Int,
+                            "values": [1],
+                        },
+                    ],
+                }
+            ],
+        },
+    )
+
+    parsed_profile = spa_pod.parse_spa_pod(spa_pod.build_spa_pod(profile_value))
+
+    assert parsed_profile.classes == [
+        {
+            "class": "Audio/Sink",
+            "count": 1,
+            "property": "card.profile.devices",
+            "devices": [1],
+        }
+    ]
 
 def test_typed_object_runtime_docs():
     assert "Typed SPA object" in (spa_pod.SpaProps.__doc__ or "")

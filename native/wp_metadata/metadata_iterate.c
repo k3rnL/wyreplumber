@@ -4,6 +4,7 @@
 
 #include "../wp_connection/wp_connection.h"
 #include "wp_metadata.h"
+#include "../wp_compat.h"
 
 typedef struct {
     WPConnection *conn;
@@ -34,8 +35,11 @@ static gboolean do_iterate_on_wp_thread(gpointer user_data) {
         const gchar *item_type = NULL;
         const gchar *item_value = NULL;
 
-        // Use wp_metadata_iterator_item_extract for older WirePlumber versions
-        wp_metadata_iterator_item_extract(&val, &item_subject, &item_key, &item_type, &item_value);
+        if (!wyreplumber_metadata_item_extract(
+                &val, &item_subject, &item_key, &item_type, &item_value)) {
+            g_value_unset(&val);
+            continue;
+        }
 
         PyObject *dict = PyDict_New();
         if (!dict) {
@@ -108,12 +112,12 @@ PyObject *WPMetadata_iterate(WPMetadata *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }
 
-    if (!self->conn) {
+    if (!self->connection) {
         PyErr_SetString(PyExc_RuntimeError, "Connection object is invalid");
         return NULL;
     }
 
-    WPConnection *conn = (WPConnection *)self->conn;
+    WPConnection *conn = (WPConnection *)self->connection;
 
     IterateData data = {
         .conn = conn,

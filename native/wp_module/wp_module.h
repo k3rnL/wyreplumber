@@ -13,7 +13,7 @@ typedef struct {
     PyObject_HEAD
     WpImplModule *module;   // The WirePlumber module object
     WpCore *core;           // Reference to core for operations
-    WPConnection *conn;     // Reference to connection for async operations
+    PyObject *connection;   // Strong reference to connection for native lifetime
     PyObject *properties;   // Dict of all properties
     char *name;
     char *arguments;

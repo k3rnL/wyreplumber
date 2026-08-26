@@ -34,12 +34,12 @@ PyObject *WPMetadata_clear(WPMetadata *self, PyObject *Py_UNUSED(ignored)) {
         return NULL;
     }
 
-    if (!self->conn) {
+    if (!self->connection) {
         PyErr_SetString(PyExc_RuntimeError, "Connection object is invalid");
         return NULL;
     }
 
-    WPConnection *conn = (WPConnection *)self->conn;
+    WPConnection *conn = (WPConnection *)self->connection;
 
     ClearData data = {
         .conn = conn,

@@ -10,6 +10,7 @@ WP_NODE_STATE_RUNNING: int
 # Port direction constants
 WP_DIRECTION_INPUT: int
 WP_DIRECTION_OUTPUT: int
+WIREPLUMBER_BUILD_API_FAMILY: str
 
 
 class WPPipewireObject:
@@ -320,7 +321,7 @@ class WPConnection:
     block until completion.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, event_capacity: int = 256) -> None:
         """
         Initialize the WirePlumber connection.
 
@@ -380,6 +381,43 @@ class WPConnection:
         Raises:
             RuntimeError: If the metadata retrieval fails.
         """
+        ...
+
+    def capture_runtime_payload(self) -> Dict[str, Any]:
+        """
+        Capture one detached primitive registry payload on the WirePlumber thread.
+
+        The returned dictionary contains no native proxy objects. It includes a
+        connection generation, monotonic sequence, capture time, health,
+        devices, nodes, ports, links, metadata, raw parameters, profiles,
+        routes, and default metadata entries.
+        """
+        ...
+
+    def next_runtime_event_payload(
+        self, block: bool = True, timeout: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Read one detached event payload, waiting when requested."""
+        ...
+
+    def drain_runtime_event_payloads(
+        self, max_events: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Drain currently available detached event payloads without waiting."""
+        ...
+
+    def reconnect(self, timeout: float = 5.0) -> int:
+        """Reconnect and return the newly synchronized generation."""
+        ...
+
+    def stop(self) -> None:
+        """Stop the native runtime thread and release event waiters."""
+        ...
+
+    def dispatch_runtime_mutation_payload(
+        self, request: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Serialize a detached mutation request onto the WirePlumber context."""
         ...
 
     def load_module(self, name: str, arguments: Optional[str] = None) -> WPModule:

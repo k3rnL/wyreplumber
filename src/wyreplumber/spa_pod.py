@@ -351,14 +351,11 @@ def _specialize_property_value(object_id: int, prop_key: int, value: Any) -> Any
     if spec.shape == "profile_classes":
         return _struct_to_profile_classes(value)
     if spec.shape == "array_int":
-        return _array_to_values(value, int)
+        return _specialize_array_property(value, int)
     if spec.shape == "array_float":
-        return _array_to_values(value, float)
+        return _specialize_array_property(value, float)
     if spec.shape == "array_id":
-        values = _array_to_values(value, int)
-        if spec.enum_cls is None:
-            return values
-        return [_coerce_enum_member(item, spec.enum_cls) for item in values]
+        return _specialize_array_property(value, int, spec.enum_cls)
     if spec.enum_cls is not None:
         return _coerce_enum_property_value(value, spec.enum_cls)
     return value
@@ -368,6 +365,14 @@ def _prepare_property_value(object_id: int, prop_key: int, value: Any) -> Any:
     spec = _property_spec_by_key(object_id, prop_key)
     if spec is None:
         return value
+
+    if isinstance(value, Mapping) and value.get("_pod_type") == SPA_TYPE_Choice:
+        prepared_value = dict(value)
+        if spec.pod_type is not None:
+            prepared_value.setdefault("child_type", spec.pod_type)
+        elif spec.enum_cls is not None:
+            prepared_value.setdefault("child_type", SPA_TYPE_Id)
+        return prepared_value
 
     if spec.shape == "dict_info":
         return _dict_info_to_struct(value)
@@ -387,10 +392,6 @@ def _prepare_property_value(object_id: int, prop_key: int, value: Any) -> Any:
         return _ensure_object_value(value, SPA_TYPE_OBJECT_Props, SPA_PARAM_Props)
     if spec.shape == "object_format":
         return _ensure_object_value(value, SPA_TYPE_OBJECT_Format, SPA_PARAM_Format)
-    if spec.enum_cls is not None and isinstance(value, Mapping) and "choice_type" in value:
-        prepared_value = dict(value)
-        prepared_value.setdefault("child_type", SPA_TYPE_Id)
-        return prepared_value
     return value
 
 
@@ -398,6 +399,32 @@ def _array_to_values(value: Any, convert: Any) -> Any:
     if not isinstance(value, Mapping) or value.get("_pod_type") != SPA_TYPE_Array:
         return value
     return [convert(item) for item in value.get("values", [])]
+
+
+def _specialize_array_property(
+    value: Any,
+    convert: Any,
+    enum_cls: type[IntEnum] | None = None,
+) -> Any:
+    def specialize(candidate: Any) -> Any:
+        values = _array_to_values(candidate, convert)
+        if values is candidate or enum_cls is None:
+            return values
+        return [_coerce_enum_member(item, enum_cls) for item in values]
+
+    if not isinstance(value, Mapping) or value.get("_pod_type") != SPA_TYPE_Choice:
+        return specialize(value)
+
+    choice = dict(value)
+    if "values" in choice:
+        choice["values"] = [specialize(item) for item in choice["values"]]
+    for key in ("value", "default", "min", "max", "step"):
+        if key in choice:
+            choice[key] = specialize(choice[key])
+    for key in ("alternatives", "flags_values"):
+        if key in choice:
+            choice[key] = [specialize(item) for item in choice[key]]
+    return choice
 
 
 def _coerce_enum_member(value: Any, enum_cls: type[IntEnum]) -> Any:
@@ -512,15 +539,22 @@ def _struct_to_profile_classes(value: Any) -> Any:
         return value
 
     items = list(value.get("values", []))
-    if not items or not isinstance(items[0], int):
+    if not items:
         return value
 
-    count = items[0]
+    # PipeWire has emitted both a counted struct (the first item is the number
+    # of class entries) and an uncounted struct containing the entries
+    # directly. Accept both wire representations and expose one stable Python
+    # shape to callers.
+    if isinstance(items[0], int) and not isinstance(items[0], bool):
+        count = items[0]
+        nested = items[1:]
+        if len(nested) != count:
+            return value
+    else:
+        nested = items
+
     classes = []
-    nested = items[1:]
-    if len(nested) != count:
-        return value
-
     for item in nested:
         if not isinstance(item, Mapping) or item.get("_pod_type") != SPA_TYPE_Struct:
             return value

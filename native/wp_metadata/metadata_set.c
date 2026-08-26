@@ -49,12 +49,12 @@ PyObject *WPMetadata_set(WPMetadata *self, PyObject *args, PyObject *kwargs) {
         return NULL;
     }
 
-    if (!self->conn) {
+    if (!self->connection) {
         PyErr_SetString(PyExc_RuntimeError, "Connection object is invalid");
         return NULL;
     }
 
-    WPConnection *conn = (WPConnection *)self->conn;
+    WPConnection *conn = (WPConnection *)self->connection;
 
     SetData data = {
         .conn = conn,

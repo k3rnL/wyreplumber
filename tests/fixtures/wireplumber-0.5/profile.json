@@ -1,0 +1,24 @@
+{
+  "wireplumber_family": "0.5",
+  "representation": "parsed-spa",
+  "owner_type": "device",
+  "owner_id": 10,
+  "parameter_id": "EnumProfile",
+  "permissions": "r",
+  "values": [
+    {
+      "object_id": 8,
+      "properties": {
+        "index": 1,
+        "name": "output:hdmi-stereo",
+        "description": "Digital Stereo (HDMI) Output",
+        "priority": 5900,
+        "available": 2,
+        "classes": ["Audio/Sink"],
+        "info": {
+          "device.profile.name": "hdmi-stereo"
+        }
+      }
+    }
+  ]
+}

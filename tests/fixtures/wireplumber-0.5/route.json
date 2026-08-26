@@ -1,0 +1,35 @@
+{
+  "wireplumber_family": "0.5",
+  "representation": "parsed-spa",
+  "owner_type": "device",
+  "owner_id": 10,
+  "parameter_id": "EnumRoute",
+  "permissions": "r",
+  "values": [
+    {
+      "object_id": 12,
+      "properties": {
+        "index": 2,
+        "direction": 1,
+        "device": 0,
+        "name": "hdmi-output-0",
+        "description": "HDMI / DisplayPort",
+        "priority": 5900,
+        "available": 2,
+        "profiles": [1],
+        "props": {
+          "properties": {
+            "volume": 0.9,
+            "mute": false,
+            "channelVolumes": [0.9, 0.9],
+            "channelMap": [3, 4],
+            "api.alsa.extra": "preserved"
+          }
+        },
+        "future.route.field": {
+          "mode": "auto"
+        }
+      }
+    }
+  ]
+}

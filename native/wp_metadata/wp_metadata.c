@@ -12,17 +12,18 @@ static PyObject *WPMetadata_get_id(WPMetadata *self, void *closure);
 static PyObject *WPMetadata_get_properties(WPMetadata *self, void *closure);
 
 static void WPMetadata_dealloc(WPMetadata *self) {
-    if (self->metadata) {
-        g_object_unref(self->metadata);
-        self->metadata = NULL;
-    }
-    if (self->core) {
-        g_object_unref(self->core);
-        self->core = NULL;
-    }
+    GObject *objects[] = {
+        self->metadata ? G_OBJECT(self->metadata) : NULL,
+        self->core ? G_OBJECT(self->core) : NULL,
+    };
+    WPConnection *conn = self->connection &&
+        PyObject_TypeCheck(self->connection, &WPConnectionType)
+        ? (WPConnection *) self->connection : NULL;
+    self->metadata = NULL;
+    self->core = NULL;
+    wp_connection_unref_objects(conn, objects, G_N_ELEMENTS(objects));
     Py_XDECREF(self->properties);
-    // Note: conn is not ref-counted, it's a weak reference
-    self->conn = NULL;
+    Py_CLEAR(self->connection);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -105,7 +106,7 @@ PyObject *WPMetadata_from_wp_metadata(WpMetadata *wp_metadata, WpCore *core, str
     // Store references
     self->metadata = g_object_ref(wp_metadata);
     self->core = g_object_ref(core);
-    self->conn = conn;  // Weak reference, no ref counting
+    self->connection = conn ? Py_NewRef((PyObject *) conn) : NULL;
 
     // Get metadata ID
     self->id = wp_proxy_get_bound_id(WP_PROXY(wp_metadata));
