@@ -1,2 +1,10 @@
+include LICENSE
+include MANIFEST.in
+include README.md
+include pyproject.toml
+include setup.py
+recursive-include docs *.md
+recursive-include examples *.py
 recursive-include native *.h
 recursive-include native *.c
+recursive-include scripts *.py
