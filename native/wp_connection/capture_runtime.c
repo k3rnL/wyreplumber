@@ -11,6 +11,9 @@ typedef struct {
     WPConnection *conn;
     PyObject *result;
     GError *error;
+    GMutex lock;
+    GCond cond;
+    gboolean completed;
 } CaptureRuntimeData;
 
 
@@ -622,10 +625,10 @@ static gboolean do_capture_runtime_on_wp_thread(gpointer user_data) {
     }
     PyGILState_Release(gil_state);
 
-    g_mutex_lock(&data->conn->call_lock);
-    data->conn->call_completed = TRUE;
-    g_cond_signal(&data->conn->call_cond);
-    g_mutex_unlock(&data->conn->call_lock);
+    g_mutex_lock(&data->lock);
+    data->completed = TRUE;
+    g_cond_signal(&data->cond);
+    g_mutex_unlock(&data->lock);
     return G_SOURCE_REMOVE;
 }
 
@@ -642,11 +645,10 @@ PyObject *WPConnection_capture_runtime_payload(
         .conn = self,
         .result = NULL,
         .error = NULL,
+        .completed = FALSE,
     };
-
-    g_mutex_lock(&self->call_lock);
-    self->call_completed = FALSE;
-    g_mutex_unlock(&self->call_lock);
+    g_mutex_init(&data.lock);
+    g_cond_init(&data.cond);
 
     GSource *source = g_idle_source_new();
     g_source_set_callback(source, do_capture_runtime_on_wp_thread, &data, NULL);
@@ -654,12 +656,15 @@ PyObject *WPConnection_capture_runtime_payload(
     g_source_unref(source);
 
     Py_BEGIN_ALLOW_THREADS
-    g_mutex_lock(&self->call_lock);
-    while (!self->call_completed) {
-        g_cond_wait(&self->call_cond, &self->call_lock);
+    g_mutex_lock(&data.lock);
+    while (!data.completed) {
+        g_cond_wait(&data.cond, &data.lock);
     }
-    g_mutex_unlock(&self->call_lock);
+    g_mutex_unlock(&data.lock);
     Py_END_ALLOW_THREADS
+
+    g_mutex_clear(&data.lock);
+    g_cond_clear(&data.cond);
 
     if (data.error) {
         PyErr_SetString(PyExc_RuntimeError, data.error->message);
