@@ -2,6 +2,7 @@
 
 #include <pipewire/keys.h>
 #include <spa/pod/pod.h>
+#include <math.h>
 #include <string.h>
 
 
@@ -42,6 +43,10 @@ typedef struct {
     WpProperties *link_properties;
     guint32 flags;
     GBytes *pod_data;
+    gboolean has_mixer_volume;
+    gdouble mixer_volume;
+    gboolean has_mixer_mute;
+    gboolean mixer_mute;
     guint64 expected_generation;
     guint64 expected_sequence;
     gboolean has_expected_sequence;
@@ -284,6 +289,26 @@ static MutationDispatchResult execute_set_parameter(
 }
 
 
+static MutationDispatchResult execute_set_node_mixer(
+    WPConnection *conn, MutationDispatchCall *call)
+{
+    WpPipewireObject *object = find_pipewire_object(
+        conn, "node", call->target_id);
+    if (!object) return MUTATION_DISPATCH_TARGET_NOT_FOUND;
+    g_object_unref(object);
+
+    return wp_connection_set_mixer_state(
+        conn,
+        call->target_id,
+        call->has_mixer_volume,
+        call->mixer_volume,
+        call->has_mixer_mute,
+        call->mixer_mute)
+        ? MUTATION_DISPATCH_READY
+        : MUTATION_DISPATCH_NOT_WRITABLE;
+}
+
+
 static MutationDispatchResult execute_metadata(
     WPConnection *conn, MutationDispatchCall *call, gboolean clear)
 {
@@ -455,6 +480,9 @@ static MutationDispatchResult execute_mutation(
 {
     if (g_str_equal(call->operation, "set_parameter")) {
         return execute_set_parameter(conn, call);
+    }
+    if (g_str_equal(call->operation, "set_node_mixer")) {
+        return execute_set_node_mixer(conn, call);
     }
     if (g_str_equal(call->operation, "select_profile") ||
         g_str_equal(call->operation, "select_route")) {
@@ -763,6 +791,77 @@ static gboolean parse_set_parameter(MutationDispatchCall *call, PyObject *reques
 }
 
 
+static gboolean parse_set_node_mixer(
+    MutationDispatchCall *call, PyObject *request)
+{
+    PyObject *target = PyDict_GetItemString(request, "target");
+    PyObject *payload = PyDict_GetItemString(request, "payload");
+    if (!target || !PyDict_Check(target) || !payload || !PyDict_Check(payload)) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "set_node_mixer target and payload must be dictionaries");
+        return FALSE;
+    }
+    if (!parse_string(target, "object_kind", &call->target_kind)) return FALSE;
+    if (!g_str_equal(call->target_kind, "node")) {
+        PyErr_SetString(PyExc_ValueError, "set_node_mixer target must be a node");
+        return FALSE;
+    }
+    guint64 target_id = 0;
+    if (!parse_identifier(target, "object_id", &target_id, FALSE)) return FALSE;
+    if (target_id > G_MAXUINT32) {
+        PyErr_SetString(PyExc_ValueError, "target object_id exceeds PipeWire ID range");
+        return FALSE;
+    }
+    call->target_id = (guint32) target_id;
+
+    PyObject *selector = PyDict_GetItemString(target, "selector");
+    PyObject *control = selector && PyDict_Check(selector)
+        ? PyDict_GetItemString(selector, "control") : NULL;
+    if (!control || !PyUnicode_Check(control) ||
+        g_strcmp0(PyUnicode_AsUTF8(control), "mixer") != 0) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "set_node_mixer target selector control must be mixer");
+        return FALSE;
+    }
+
+    PyObject *volume = PyDict_GetItemString(payload, "volume");
+    if (volume && volume != Py_None) {
+        if (PyBool_Check(volume)) {
+            PyErr_SetString(PyExc_TypeError, "mixer volume must be a number");
+            return FALSE;
+        }
+        call->mixer_volume = PyFloat_AsDouble(volume);
+        if (PyErr_Occurred()) return FALSE;
+        if (!isfinite(call->mixer_volume) || call->mixer_volume < 0.0) {
+            PyErr_SetString(
+                PyExc_ValueError,
+                "mixer volume must be finite and non-negative");
+            return FALSE;
+        }
+        call->has_mixer_volume = TRUE;
+    }
+
+    PyObject *mute = PyDict_GetItemString(payload, "mute");
+    if (mute && mute != Py_None) {
+        if (!PyBool_Check(mute)) {
+            PyErr_SetString(PyExc_TypeError, "mixer mute must be a boolean");
+            return FALSE;
+        }
+        call->mixer_mute = mute == Py_True;
+        call->has_mixer_mute = TRUE;
+    }
+    if (!call->has_mixer_volume && !call->has_mixer_mute) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "set_node_mixer payload must contain volume or mute");
+        return FALSE;
+    }
+    return TRUE;
+}
+
+
 static gboolean parse_metadata_mutation(
     MutationDispatchCall *call, PyObject *request, gboolean clear)
 {
@@ -989,6 +1088,11 @@ PyObject *WPConnection_dispatch_runtime_mutation_payload(
          g_str_equal(call.operation, "select_profile") ||
          g_str_equal(call.operation, "select_route")) &&
         !parse_set_parameter(&call, request)) {
+        clear_call(&call);
+        return NULL;
+    }
+    if (g_str_equal(call.operation, "set_node_mixer") &&
+        !parse_set_node_mixer(&call, request)) {
         clear_call(&call);
         return NULL;
     }

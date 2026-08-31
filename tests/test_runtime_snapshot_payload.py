@@ -116,6 +116,12 @@ def _payload():
                     "media.class": "Audio/Sink",
                 },
                 "parameter_ids": ["Props"],
+                "mixer": {
+                    "volume": 0.63,
+                    "mute": False,
+                    "base": 1.0,
+                    "step": 1.0 / 65536.0,
+                },
                 "state": 3,
                 "error": None,
             },
@@ -205,6 +211,18 @@ def test_native_payload_builds_a_coherent_detached_snapshot():
     assert snapshot.devices_by_id[10].profile_ids == (1,)
     assert snapshot.devices_by_id[10].route_ids == (2,)
     assert snapshot.nodes_by_id[20].input_port_ids == (30,)
+    mixer = snapshot.parameters_by_key[("node", 20, "Mixer")]
+    assert mixer.permissions == "rw"
+    assert mixer.properties["control"] == "wireplumber-mixer"
+    assert mixer.values[0] == AudioPropertiesValue(
+        volume=0.63,
+        mute=False,
+        extra={
+            "control": "wireplumber-mixer",
+            "base": 1.0,
+            "step": 1.0 / 65536.0,
+        },
+    )
     assert snapshot.nodes_by_id[21].output_port_ids == (32,)
     assert snapshot.ports_by_id[30].direction is PortDirection.INPUT
     assert snapshot.links_by_id[40].state == "active"

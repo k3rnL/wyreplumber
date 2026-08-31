@@ -35,6 +35,7 @@ from .models import (
 
 class MutationOperation(str, Enum):
     SET_PARAMETER = "set_parameter"
+    SET_NODE_MIXER = "set_node_mixer"
     SET_METADATA = "set_metadata"
     CLEAR_METADATA = "clear_metadata"
     SELECT_PROFILE = "select_profile"
@@ -45,6 +46,7 @@ class MutationOperation(str, Enum):
 
 class ConfirmationOperator(str, Enum):
     EQUALS = "equals"
+    APPROXIMATELY_EQUALS = "approximately_equals"
     PRESENT = "present"
     ABSENT = "absent"
 
@@ -155,6 +157,7 @@ class ConfirmationPredicateValue(RuntimeValue):
     operator: ConfirmationOperator
     path: tuple[str | int, ...] = ()
     expected: object = None
+    tolerance: float | None = field(default=None, metadata={"omit_none": True})
 
     def __post_init__(self) -> None:
         if not isinstance(self.target, MutationTargetValue):
@@ -178,6 +181,23 @@ class ConfirmationPredicateValue(RuntimeValue):
         if self.operator in {ConfirmationOperator.PRESENT, ConfirmationOperator.ABSENT}:
             if self.expected is not None:
                 raise ValueError(f"{self.operator.value} predicates must not set expected")
+        if self.operator is ConfirmationOperator.APPROXIMATELY_EQUALS:
+            if (
+                isinstance(self.expected, bool)
+                or not isinstance(self.expected, (int, float))
+            ):
+                raise TypeError("approximately_equals expected must be a number")
+            if (
+                isinstance(self.tolerance, bool)
+                or not isinstance(self.tolerance, (int, float))
+            ):
+                raise TypeError("approximately_equals tolerance must be a number")
+            tolerance = float(self.tolerance)
+            if not isfinite(tolerance) or tolerance < 0:
+                raise ValueError("approximately_equals tolerance must be finite and non-negative")
+            object.__setattr__(self, "tolerance", tolerance)
+        elif self.tolerance is not None:
+            raise ValueError("tolerance is only valid for approximately_equals predicates")
 
     def matches(self, observation: object) -> bool:
         """Evaluate this predicate against one detached observation."""
@@ -190,6 +210,10 @@ class ConfirmationPredicateValue(RuntimeValue):
             return not found or value is None
         if not found:
             return False
+        if self.operator is ConfirmationOperator.APPROXIMATELY_EQUALS:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return False
+            return abs(float(value) - float(self.expected)) <= self.tolerance
         return _comparable(value) == _comparable(self.expected)
 
 
@@ -797,7 +821,7 @@ def set_node_volume(
     timeout: float = 5.0,
     request_id: str | None = None,
 ) -> MutationOutcome:
-    return set_node_audio_properties(
+    return _set_node_mixer(
         connection,
         node_id=node_id,
         expected_generation=expected_generation,
@@ -818,7 +842,7 @@ def set_node_mute(
     timeout: float = 5.0,
     request_id: str | None = None,
 ) -> MutationOutcome:
-    return set_node_audio_properties(
+    return _set_node_mixer(
         connection,
         node_id=node_id,
         expected_generation=expected_generation,
@@ -827,6 +851,66 @@ def set_node_mute(
         timeout=timeout,
         request_id=request_id,
     )
+
+
+def _set_node_mixer(
+    connection: object,
+    *,
+    node_id: int,
+    expected_generation: int,
+    expected_sequence: int | None = None,
+    volume: object = _UNSET,
+    mute: object = _UNSET,
+    timeout: float = 5.0,
+    request_id: str | None = None,
+) -> MutationOutcome:
+    """Set and confirm effective state through WirePlumber's mixer API."""
+
+    if volume is mute is _UNSET:
+        raise ValueError("volume or mute must be supplied")
+    _pipewire_identifier(node_id, "node_id")
+    payload: dict[str, object] = {}
+    predicates: list[ConfirmationPredicateValue] = []
+    target = MutationTargetValue(
+        object_kind=RuntimeObjectKind.NODE,
+        object_id=node_id,
+        selector={"parameter_id": "Mixer", "control": "mixer"},
+    )
+    if volume is not _UNSET:
+        requested_volume = _non_negative_finite(volume, "volume")
+        payload["volume"] = requested_volume
+        predicates.append(
+            ConfirmationPredicateValue(
+                target=target,
+                operator=ConfirmationOperator.APPROXIMATELY_EQUALS,
+                path=("values", 0, "volume"),
+                expected=requested_volume,
+                tolerance=0.005,
+            )
+        )
+    if mute is not _UNSET:
+        if not isinstance(mute, bool):
+            raise TypeError("mute must be a boolean")
+        payload["mute"] = mute
+        predicates.append(
+            ConfirmationPredicateValue(
+                target=target,
+                operator=ConfirmationOperator.EQUALS,
+                path=("values", 0, "mute"),
+                expected=mute,
+            )
+        )
+    request = MutationRequest.create(
+        request_id=request_id,
+        expected_generation=expected_generation,
+        expected_sequence=expected_sequence,
+        operation=MutationOperation.SET_NODE_MIXER,
+        target=target,
+        payload=payload,
+        confirmation_predicates=tuple(predicates),
+        timeout=timeout,
+    )
+    return _execute_confirmed_mutation(connection, request)
 
 
 _DEFAULT_NODE_METADATA = {

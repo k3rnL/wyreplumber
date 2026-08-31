@@ -232,6 +232,41 @@ def test_typed_volume_and_mute_helpers_validate_before_native_dispatch(
     assert ticket.dispatch_order == 1
 
 
+def test_effective_mixer_volume_and_mute_are_observed_and_confirmed(
+    pipewire_socket, request
+):
+    connection = WPConnection()
+    module, snapshot, node, _ = _loopback_node(connection, request)
+    assert snapshot.parameters_by_key.get(("node", node.id, "Mixer")) is not None
+
+    volume = set_node_volume(
+        connection,
+        node_id=node.id,
+        volume=0.42,
+        expected_generation=snapshot.generation,
+        timeout=3,
+        request_id="set-effective-mixer-volume",
+    )
+    mute = set_node_mute(
+        connection,
+        node_id=node.id,
+        mute=True,
+        expected_generation=snapshot.generation,
+        timeout=3,
+        request_id="set-effective-mixer-mute",
+    )
+    observed = capture_runtime_snapshot(connection).parameters_by_key[
+        ("node", node.id, "Mixer")
+    ].values[0]
+
+    assert module is not None
+    assert volume.status is MutationStatus.CONFIRMED
+    assert volume.operation is MutationOperation.SET_NODE_MIXER
+    assert mute.status is MutationStatus.CONFIRMED
+    assert observed.volume == pytest.approx(0.42, abs=0.005)
+    assert observed.mute is True
+
+
 def test_generic_parameter_control_reports_stale_target_and_not_writable(
     pipewire_socket, request
 ):

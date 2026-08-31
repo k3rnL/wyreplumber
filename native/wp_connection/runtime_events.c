@@ -195,7 +195,15 @@ static PyObject *copy_object_record(WPConnection *conn, GObject *object) {
     if (WP_IS_NODE(object)) {
         const gchar *error = NULL;
         const WpNodeState state = wp_node_get_state(WP_NODE(object), &error);
-        if (!set_owned(record, "state", PyLong_FromLong(state)) ||
+        PyObject *mixer = wp_connection_copy_mixer_state(
+            conn, wp_proxy_get_bound_id(WP_PROXY(object)), NULL);
+        if (!mixer) {
+            Py_DECREF(record);
+            PyErr_Clear();
+            return NULL;
+        }
+        if (!set_owned(record, "mixer", mixer) ||
+            !set_owned(record, "state", PyLong_FromLong(state)) ||
             !set_owned(record, "error", error ? PyUnicode_FromString(error) : Py_NewRef(Py_None))) {
             Py_DECREF(record);
             return NULL;

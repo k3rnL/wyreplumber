@@ -7,7 +7,7 @@ Open Cinema.
 
 The orchestration surface provides coherent immutable snapshots, ordered
 events with explicit continuity loss, typed parameters and profiles/routes,
-confirmed metadata and volume mutations, and ownership-safe managed links.
+confirmed metadata and WirePlumber mixer mutations, and ownership-safe managed links.
 Its compatibility and lifetime rules are the
 [orchestration contract v1](docs/runtime-contract-v1.md). The
 [runtime example](examples/runtime_orchestration.py) demonstrates snapshot

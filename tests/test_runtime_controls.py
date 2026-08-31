@@ -95,6 +95,7 @@ def test_request_factory_assigns_unique_identity_and_absolute_deadline():
     assert not first.is_expired("2026-08-22T12:00:02.499999Z")
     assert first.is_expired(first.deadline_at)
     assert second.is_expired(second.requested_at)
+    assert "tolerance" not in first.confirmation_predicates[0].to_dict()
 
 
 @pytest.mark.parametrize(
@@ -149,6 +150,16 @@ def test_confirmation_predicates_use_declarative_paths_without_callbacks():
     assert absent.matches(observation)
     assert not equals.matches({"values": [{"mute": True}]})
     assert not equals.matches(None)
+
+    approximate = ConfirmationPredicateValue(
+        target=_target(),
+        operator=ConfirmationOperator.APPROXIMATELY_EQUALS,
+        path=("mixer", "volume"),
+        expected=0.42,
+        tolerance=0.005,
+    )
+    assert approximate.matches({"mixer": {"volume": 0.423}})
+    assert not approximate.matches({"mixer": {"volume": 0.426}})
 
     with pytest.raises(ValueError, match="must not set expected"):
         ConfirmationPredicateValue(

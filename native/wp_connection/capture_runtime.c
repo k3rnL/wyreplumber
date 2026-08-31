@@ -309,6 +309,7 @@ static gboolean append_device(
 
 
 static gboolean append_node(
+    WPConnection *conn,
     WpNode *node,
     PyObject *nodes,
     PyObject *parameters,
@@ -327,7 +328,14 @@ static gboolean append_node(
     const WpNodeState state = wp_node_get_state(node, &error_message);
     const guint input_ports = wp_node_get_n_input_ports(node, &max_input_ports);
     const guint output_ports = wp_node_get_n_output_ports(node, &max_output_ports);
-    if (!dict_set_owned(record, "state", PyLong_FromLong(state), error) ||
+    PyObject *mixer = wp_connection_copy_mixer_state(
+        conn, wp_proxy_get_bound_id(WP_PROXY(node)), error);
+    if (!mixer) {
+        Py_DECREF(record);
+        return FALSE;
+    }
+    if (!dict_set_owned(record, "mixer", mixer, error) ||
+        !dict_set_owned(record, "state", PyLong_FromLong(state), error) ||
         !dict_set_owned(record, "error", error_message ? PyUnicode_FromString(error_message) : Py_NewRef(Py_None), error) ||
         !dict_set_owned(record, "n_input_ports", PyLong_FromUnsignedLong(input_ports), error) ||
         !dict_set_owned(record, "max_input_ports", PyLong_FromUnsignedLong(max_input_ports), error) ||
@@ -559,7 +567,8 @@ static PyObject *capture_runtime_payload(WPConnection *conn, GError **error) {
         if (WP_IS_DEVICE(object)) {
             success = append_device(WP_DEVICE(object), devices, parameters, profiles, routes, error);
         } else if (WP_IS_NODE(object)) {
-            success = append_node(WP_NODE(object), nodes, parameters, profiles, routes, error);
+            success = append_node(
+                conn, WP_NODE(object), nodes, parameters, profiles, routes, error);
         } else if (WP_IS_PORT(object)) {
             success = append_port(WP_PORT(object), ports, parameters, profiles, routes, error);
         } else if (WP_IS_LINK(object)) {

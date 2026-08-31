@@ -10,6 +10,7 @@ from dataclasses import replace
 from wyreplumber.spa_pod import parse_spa_pod_dict
 
 from .models import (
+    AudioPropertiesValue,
     ConnectionHealthValue,
     ConnectionState,
     DefaultsValue,
@@ -116,7 +117,10 @@ def runtime_snapshot_from_payload(payload: Mapping[str, object]) -> RuntimeSnaps
     generation = _identifier(payload["generation"], "$.generation")
     sequence = _identifier(payload["sequence"], "$.sequence")
     health = _health(payload["health"], generation)
-    parameter_values = _parameters(payload["parameters"])
+    parameter_values = (
+        *_parameters(payload["parameters"]),
+        *_mixer_parameters(payload["nodes"]),
+    )
 
     profiles_by_key: dict[tuple[int, int], ProfileValue] = {}
     routes_by_key: dict[tuple[int, int], RouteValue] = {}
@@ -302,6 +306,51 @@ def _nodes(
                 parameter_ids=_string_sequence(record.get("parameter_ids", ()), f"{path}.parameter_ids"),
             )
         )
+    return tuple(result)
+
+
+def _mixer_parameters(value: object) -> tuple[ParameterValue, ...]:
+    result: list[ParameterValue] = []
+    for index, item in enumerate(_sequence(value, "$.nodes")):
+        path = f"$.nodes[{index}]"
+        node = _mapping(item, path)
+        mixer_value = node.get("mixer")
+        if mixer_value is None:
+            continue
+        mixer_path = f"{path}.mixer"
+        mixer = _mapping(mixer_value, mixer_path)
+        extra = {"control": "wireplumber-mixer"}
+        for name in ("base", "step"):
+            observed = _optional_number(mixer.get(name), f"{mixer_path}.{name}")
+            if observed is not None:
+                extra[name] = observed
+        try:
+            result.append(
+                ParameterValue(
+                    owner_type="node",
+                    owner_id=_identifier(_required(node, "id", path), f"{path}.id"),
+                    id="Mixer",
+                    permissions="rw",
+                    values=(
+                        AudioPropertiesValue(
+                            volume=_number(
+                                _required(mixer, "volume", mixer_path),
+                                f"{mixer_path}.volume",
+                            ),
+                            mute=_boolean(
+                                _required(mixer, "mute", mixer_path),
+                                f"{mixer_path}.mute",
+                            ),
+                            extra=extra,
+                        ),
+                    ),
+                    properties={"complete": True, "control": "wireplumber-mixer"},
+                )
+            )
+        except (TypeError, ValueError) as error:
+            raise RuntimePayloadError(
+                "invalid_mixer_state", str(error), path=mixer_path
+            ) from error
     return tuple(result)
 
 
@@ -545,6 +594,24 @@ def _optional_string(value: object, path: str) -> str | None:
 def _integer(value: object, path: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise RuntimePayloadError("invalid_integer", "expected an integer", path=path)
+    return value
+
+
+def _number(value: object, path: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise RuntimePayloadError("invalid_number", "expected a number", path=path)
+    return float(value)
+
+
+def _optional_number(value: object, path: str) -> float | None:
+    if value is None:
+        return None
+    return _number(value, path)
+
+
+def _boolean(value: object, path: str) -> bool:
+    if not isinstance(value, bool):
+        raise RuntimePayloadError("invalid_boolean", "expected a boolean", path=path)
     return value
 
 

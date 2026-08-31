@@ -27,6 +27,8 @@ typedef struct {
     // WirePlumber objects (ONLY touched on WP thread)
     WpCore *core;
     WpObjectManager *om;
+    WpPlugin *mixer_api;
+    gboolean core_connected;
 
     // State / sync
     GMutex lock;
@@ -112,6 +114,17 @@ void wp_connection_managed_link_forget_endpoints(
     guint32 output_port_id,
     guint32 input_node_id,
     guint32 input_port_id);
+
+// WirePlumber mixer-api helpers (ONLY called on the WP thread)
+PyObject *wp_connection_copy_mixer_state(
+    WPConnection *conn, guint32 node_id, GError **error);
+gboolean wp_connection_set_mixer_state(
+    WPConnection *conn,
+    guint32 node_id,
+    gboolean has_volume,
+    gdouble volume,
+    gboolean has_mute,
+    gboolean mute);
 
 // Helper function for synchronous wp_core_sync
 gboolean wp_connection_sync(WPConnection *conn);

@@ -9,6 +9,7 @@
 static void on_om_installed(WpObjectManager *om, gpointer user_data);
 static void on_core_connected(WpCore *core, gpointer user_data);
 static void on_core_disconnected(WpCore *core, gpointer user_data);
+static void on_mixer_api_loaded(GObject *source, GAsyncResult *result, gpointer user_data);
 static PyObject *WPConnection_repr(WPConnection *self);
 static PyObject *WPConnection_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 static int WPConnection_init(WPConnection *self, PyObject *args, PyObject *kwds);
@@ -71,9 +72,8 @@ void wp_connection_unref_objects(
     g_cond_clear(&data.cond);
 }
 
-static void on_core_connected(WpCore *core, gpointer user_data) {
-    WPConnection *c = user_data;
-    if (!wp_core_is_connected(core) || c->om) return;
+static void install_object_manager(WPConnection *c) {
+    if (!c->core_connected || !c->mixer_api || c->om) return;
 
     c->om = wp_object_manager_new();
 
@@ -116,8 +116,48 @@ static void on_core_connected(WpCore *core, gpointer user_data) {
     wp_core_install_object_manager(c->core, c->om);
 }
 
+static void on_core_connected(WpCore *core, gpointer user_data) {
+    WPConnection *c = user_data;
+    if (!wp_core_is_connected(core)) return;
+    c->core_connected = TRUE;
+    install_object_manager(c);
+}
+
+static void on_mixer_api_loaded(
+    GObject *source, GAsyncResult *result, gpointer user_data)
+{
+    WPConnection *c = user_data;
+    WpCore *core = WP_CORE(source);
+    g_autoptr(GError) error = NULL;
+    if (!wp_core_load_component_finish(core, result, &error)) {
+        g_mutex_lock(&c->lock);
+        if (!c->start_error) c->start_error = g_steal_pointer(&error);
+        c->started = TRUE;
+        g_cond_broadcast(&c->cond);
+        g_mutex_unlock(&c->lock);
+        g_main_loop_quit(c->loop);
+        return;
+    }
+
+    c->mixer_api = wp_plugin_find(core, "mixer-api");
+    if (!c->mixer_api) {
+        g_mutex_lock(&c->lock);
+        c->start_error = g_error_new_literal(
+            G_IO_ERROR, G_IO_ERROR_FAILED,
+            "WirePlumber mixer-api component did not register its plugin");
+        c->started = TRUE;
+        g_cond_broadcast(&c->cond);
+        g_mutex_unlock(&c->lock);
+        g_main_loop_quit(c->loop);
+        return;
+    }
+    g_object_set(c->mixer_api, "scale", 1 /* cubic */, NULL);
+    install_object_manager(c);
+}
+
 static void on_core_disconnected(WpCore *core, gpointer user_data) {
     WPConnection *c = user_data;
+    c->core_connected = FALSE;
     wp_connection_managed_links_reset(c);
     if (c->started && !c->stop_requested) {
         wp_connection_mutations_cancel_pending(
@@ -163,6 +203,19 @@ static gpointer wp_thread_main(gpointer data) {
     g_signal_connect(c->core, "connected", G_CALLBACK(on_core_connected), c);
     g_signal_connect(c->core, "disconnected", G_CALLBACK(on_core_disconnected), c);
 
+    // The mixer API is the authoritative volume/mute interface for both
+    // software nodes and device routes. Load it before installing our object
+    // manager, matching WirePlumber's wpctl lifecycle.
+    wp_core_load_component(
+        c->core,
+        "libwireplumber-module-mixer-api",
+        "module",
+        NULL,
+        NULL,
+        NULL,
+        on_mixer_api_loaded,
+        c);
+
     // Start connection - returns FALSE on immediate failure
     if (!wp_core_connect(c->core)) {
         g_mutex_lock(&c->lock);
@@ -185,6 +238,10 @@ cleanup:
     if (c->om) {
         g_object_unref(c->om);
         c->om = NULL;
+    }
+    if (c->mixer_api) {
+        g_object_unref(c->mixer_api);
+        c->mixer_api = NULL;
     }
     if (c->core) {
         g_object_unref(c->core);
@@ -212,6 +269,8 @@ static PyObject *WPConnection_new(PyTypeObject *type, PyObject *args, PyObject *
         self->loop = NULL;
         self->core = NULL;
         self->om = NULL;
+        self->mixer_api = NULL;
+        self->core_connected = FALSE;
         g_mutex_init(&self->lock);
         g_cond_init(&self->cond);
         self->started = FALSE;

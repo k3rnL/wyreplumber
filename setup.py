@@ -44,6 +44,7 @@ setup(
                 "native/wp_connection/runtime_events.c",
                 "native/wp_connection/lifecycle.c",
                 "native/wp_connection/mutation_dispatch.c",
+                "native/wp_connection/mixer_controls.c",
                 "native/wp_connection/load_module.c",
                 "native/wp_connection/sync.c",
                 "native/wp_pipewire_object/wp_pipewire_object.c",

@@ -57,7 +57,10 @@ class RuntimeValue:
         for item in fields(self):
             if not item.metadata.get("serialize", True):
                 continue
-            result[item.name] = _serialize(getattr(self, item.name))
+            value = getattr(self, item.name)
+            if item.metadata.get("omit_none") and value is None:
+                continue
+            result[item.name] = _serialize(value)
         return result
 
     @classmethod
